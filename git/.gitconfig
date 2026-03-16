@@ -1,0 +1,56 @@
+[user]
+	name = kitsully
+	email = kris@kristophersullivan.com
+	signingkey = ssh-ed25519 CHANGE_ME
+
+[gpg]
+	format = ssh
+
+[gpg "ssh"]
+	program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
+
+[commit]
+	gpgsign = true
+
+[tag]
+	gpgsign = true
+
+[core]
+	editor = code --wait
+	autocrlf = input
+	excludesfile = ~/.gitignore_global
+
+[init]
+	defaultBranch = main
+
+[pull]
+	rebase = true
+
+[push]
+	autoSetupRemote = true
+	default = current
+
+[merge]
+	tool = vscode
+
+[mergetool "vscode"]
+	cmd = code --wait --merge $REMOTE $LOCAL $BASE $MERGED
+
+[diff]
+	tool = vscode
+	colorMoved = default
+
+[difftool "vscode"]
+	cmd = code --wait --diff $LOCAL $REMOTE
+
+[rerere]
+	enabled = true
+
+[credential]
+	helper = osxkeychain
+
+[alias]
+	co = checkout
+	br = branch
+	st = status
+	lg = log --oneline --graph --decorate --all

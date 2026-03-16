@@ -1,0 +1,9 @@
+## Atuin configuration
+## Full reference: https://docs.atuin.sh/configuration/config/
+
+# Execute command immediately on enter (tab to edit)
+enter_accept = true
+
+[sync]
+# Enable sync v2
+records = true
