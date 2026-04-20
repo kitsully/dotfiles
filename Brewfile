@@ -88,11 +88,9 @@ mas "GarageBand", id: 682658836
 mas "iMovie", id: 408981434
 mas "Kagi for Safari", id: 1622835804
 mas "Keynote", id: 409183694
-mas "Moom Classic", id: 419330170
 mas "Numbers", id: 409203825
 mas "Pages", id: 409201541
 mas "PCalc", id: 403504866
 mas "Pixelmator Pro", id: 1289583905
 mas "ShellHistory", id: 1564015476
 mas "Todoist", id: 585829637
-mas "Xcode", id: 497799835
