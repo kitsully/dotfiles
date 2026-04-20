@@ -14,6 +14,32 @@ cd ~/dotfiles
 - **macOS**: Xcode CLI tools, Homebrew, Brewfile packages, symlinks, VS Code extensions, macOS preferences
 - **Linux**: Distro-native packages (Ubuntu, Fedora, RHEL/CentOS, Arch), standalone tool installs, symlinks, VS Code extensions
 
+## Updating an Existing Machine
+
+After making changes on one machine, pull them down on another:
+
+```bash
+cd ~/dotfiles
+git pull
+./install.sh            # re-links all configs (safe to run repeatedly)
+```
+
+If the Brewfile or packages changed, also sync packages:
+
+```bash
+# macOS
+brew bundle --file=~/dotfiles/Brewfile
+
+# Linux
+./linux/packages.sh
+```
+
+To verify everything is in order:
+
+```bash
+./doctor.sh
+```
+
 ## What's Inside
 
 | File / Dir | Purpose |
