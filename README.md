@@ -61,6 +61,7 @@ To verify everything is in order:
 | `config/nvim/` | Neovim config — LazyVim with Claude Code integration |
 | `config/gh/config.yml` | GitHub CLI settings and aliases |
 | `vscode/extensions.txt` | VS Code extension list (installed by setup.sh) |
+| `iterm2/Default.json` | iTerm2 profile (loaded via DynamicProfiles on macOS) |
 
 ## Platform Detection
 
@@ -118,8 +119,7 @@ LazyVim-based config with extras for: Claude Code AI, Docker, Git, Java, JSON, P
 3. Sign into iCloud / Mac App Store (required for `mas` installs)
 4. Sign into Raycast for cloud sync
 5. Activate licenses: Keyboard Maestro, TextExpander, Setapp
-6. Import iTerm2 profile from backup
-7. `npm install -g @anthropic-ai/claude-code`
+6. `npm install -g @anthropic-ai/claude-code`
 
 ### Linux
 1. Install and configure 1Password with SSH agent

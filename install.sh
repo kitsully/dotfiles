@@ -55,4 +55,10 @@ link "$DOTFILES/config/nvim/lua/config/autocmds.lua" "$HOME/.config/nvim/lua/con
 link "$DOTFILES/config/nvim/lua/config/options.lua"  "$HOME/.config/nvim/lua/config/options.lua"
 link "$DOTFILES/config/nvim/lua/plugins/claude.lua"  "$HOME/.config/nvim/lua/plugins/claude.lua"
 
+# iTerm2 profile (macOS only)
+if [[ "$OS" == "Darwin" ]]; then
+    mkdir -p "$HOME/Library/Application Support/iTerm2/DynamicProfiles"
+    link "$DOTFILES/iterm2/Default.json" "$HOME/Library/Application Support/iTerm2/DynamicProfiles/Default.json"
+fi
+
 echo "Done."

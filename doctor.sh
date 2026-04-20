@@ -89,6 +89,7 @@ if [[ "$OS" == "Darwin" ]]; then
     check "1Password SSH agent"      test -S "$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
     check ".hushlogin"               test -f "$HOME/.hushlogin"
     check "iTerm2 shell integration" test -f "$HOME/.iterm2_shell_integration.zsh"
+    check_link "iTerm2 profile"          "$HOME/Library/Application Support/iTerm2/DynamicProfiles/Default.json"
 else
     check "1Password SSH agent"      test -S "$HOME/.1password/agent.sock"
     check "zsh is default shell"     test "$(basename "$SHELL")" = "zsh"
