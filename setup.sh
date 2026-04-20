@@ -22,7 +22,13 @@ if [[ "$OS" == "Darwin" ]]; then
         eval "$(/opt/homebrew/bin/brew shellenv)"
     fi
 
-    # 3. Bundle install
+    # 3. Accept Xcode license if needed
+    if xcode-select -p &>/dev/null && ! xcodebuild -checkFirstLaunchStatus &>/dev/null; then
+        echo "Accepting Xcode license..."
+        sudo xcodebuild -license accept
+    fi
+
+    # 4. Bundle install
     echo "Installing packages from Brewfile..."
     brew bundle --file="$SCRIPT_DIR/Brewfile"
 else
