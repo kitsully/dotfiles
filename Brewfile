@@ -2,7 +2,6 @@
 brew "atuin"
 brew "awscli"
 brew "cmake"
-brew "direnv"
 brew "doctl"
 brew "docx2txt"
 brew "fd"

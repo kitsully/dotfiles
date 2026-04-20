@@ -22,7 +22,7 @@ PROMPT='%F{green}%~%f${vcs_info_msg_0_} %# '
 
 # === Tool Integrations ===
 eval "$(zoxide init zsh)"
-eval "$(direnv hook zsh)"
+eval "$(mise activate zsh)"
 eval "$(atuin init zsh)"
 eval "$(fzf --zsh)"
 

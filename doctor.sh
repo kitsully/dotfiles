@@ -45,7 +45,6 @@ check "fd"         command -v fd
 check "rg"         command -v rg
 check "jq"         command -v jq
 check "zoxide"     command -v zoxide
-check "direnv"     command -v direnv
 check "atuin"      command -v atuin
 check "mise"       command -v mise
 check "tofu"       command -v tofu
