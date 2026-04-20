@@ -1,7 +1,7 @@
 [user]
 	name = kitsully
 	email = kris@kristophersullivan.com
-	signingkey = ssh-ed25519 CHANGE_ME
+	signingkey = ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAuzvbNzyaj0ZfHeIi5fqq20frVrxDFOEFjhe09Eh7Lh
 
 [gpg]
 	format = ssh

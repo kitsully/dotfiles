@@ -33,21 +33,29 @@ brew bundle --file="$SCRIPT_DIR/Brewfile"
 echo "Linking dotfiles..."
 bash "$SCRIPT_DIR/install.sh"
 
-# 6. FZF shell integration
+# 6. VS Code extensions
+if command -v code &>/dev/null; then
+    echo "Installing VS Code extensions..."
+    while IFS= read -r ext; do
+        code --install-extension "$ext" --force 2>/dev/null
+    done < "$SCRIPT_DIR/vscode/extensions.txt"
+fi
+
+# 7. FZF shell integration
 echo "Installing FZF shell integration..."
 "$(brew --prefix)/opt/fzf/install" --key-bindings --completion --no-update-rc --no-bash --no-fish
 
-# 7. iTerm2 shell integration
+# 8. iTerm2 shell integration
 if [ ! -f "$HOME/.iterm2_shell_integration.zsh" ]; then
     echo "Downloading iTerm2 shell integration..."
     curl -L https://iterm2.com/shell_integration/zsh -o "$HOME/.iterm2_shell_integration.zsh"
 fi
 
-# 8. macOS defaults
+# 9. macOS defaults
 echo "Applying macOS preferences..."
 bash "$SCRIPT_DIR/macos-defaults.sh"
 
-# 9. Verify installation
+# 10. Verify installation
 echo ""
 echo "Running doctor check..."
 bash "$SCRIPT_DIR/doctor.sh"

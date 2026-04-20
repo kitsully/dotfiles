@@ -47,18 +47,27 @@ check "jq"         command -v jq
 check "zoxide"     command -v zoxide
 check "direnv"     command -v direnv
 check "atuin"      command -v atuin
-check "terraform"  command -v terraform
+check "mise"       command -v mise
+check "tofu"       command -v tofu
+check "rclone"     command -v rclone
 check "psql"       command -v psql
-check "nvim"       command -v neovim
+check "nvim"       command -v nvim
 check "wget"       command -v wget
 check "code"       command -v code
+check "docx2txt"   command -v docx2txt.pl
 
 echo ""
 echo "Symlinks:"
 check_link ".zshrc"            "$HOME/.zshrc"
 check_link ".gitconfig"        "$HOME/.gitconfig"
 check_link ".gitignore_global" "$HOME/.gitignore_global"
+check_link "ssh config"        "$HOME/.ssh/config"
 check_link "atuin config"      "$HOME/.config/atuin/config.toml"
+check_link "gh config"         "$HOME/.config/gh/config.yml"
+check_link "nvim init.lua"     "$HOME/.config/nvim/init.lua"
+check_link "nvim lazyvim.json" "$HOME/.config/nvim/lazyvim.json"
+check_link "nvim lazy.lua"     "$HOME/.config/nvim/lua/config/lazy.lua"
+check_link "nvim claude.lua"   "$HOME/.config/nvim/lua/plugins/claude.lua"
 
 echo ""
 echo "Directories:"
