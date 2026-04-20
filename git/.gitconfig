@@ -6,9 +6,6 @@
 [gpg]
 	format = ssh
 
-[gpg "ssh"]
-	program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
-
 [commit]
 	gpgsign = true
 
@@ -46,11 +43,11 @@
 [rerere]
 	enabled = true
 
-[credential]
-	helper = osxkeychain
-
 [alias]
 	co = checkout
 	br = branch
 	st = status
 	lg = log --oneline --graph --decorate --all
+
+[include]
+	path = ~/.gitconfig.local

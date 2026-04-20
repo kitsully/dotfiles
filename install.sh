@@ -2,6 +2,7 @@
 set -euo pipefail
 
 DOTFILES="$(cd "$(dirname "$0")" && pwd)"
+OS="$(uname)"
 
 link() {
     local src="$1" dst="$2"
@@ -21,8 +22,20 @@ link "$DOTFILES/zsh/.zshrc"              "$HOME/.zshrc"
 link "$DOTFILES/git/.gitconfig"          "$HOME/.gitconfig"
 link "$DOTFILES/git/.gitignore_global"  "$HOME/.gitignore_global"
 
+# Platform-specific git config
+if [[ "$OS" == "Darwin" ]]; then
+    link "$DOTFILES/git/.gitconfig-macos.local" "$HOME/.gitconfig.local"
+else
+    link "$DOTFILES/git/.gitconfig-linux.local" "$HOME/.gitconfig.local"
+fi
+
+# Platform-specific SSH config
 mkdir -p "$HOME/.ssh"
-link "$DOTFILES/ssh/config"              "$HOME/.ssh/config"
+if [[ "$OS" == "Darwin" ]]; then
+    link "$DOTFILES/ssh/config.macos"    "$HOME/.ssh/config"
+else
+    link "$DOTFILES/ssh/config.linux"    "$HOME/.ssh/config"
+fi
 
 mkdir -p "$HOME/.config/atuin"
 link "$DOTFILES/config/atuin/config.toml" "$HOME/.config/atuin/config.toml"

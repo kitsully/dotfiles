@@ -3,6 +3,7 @@
 
 pass=0
 fail=0
+OS="$(uname)"
 
 check() {
     local label="$1"
@@ -34,7 +35,9 @@ echo "=== Doctor ==="
 echo ""
 
 echo "CLI tools:"
-check "brew"       command -v brew
+if [[ "$OS" == "Darwin" ]]; then
+    check "brew"   command -v brew
+fi
 check "git"        command -v git
 check "node"       command -v node
 check "python3"    command -v python3
@@ -60,6 +63,7 @@ echo "Symlinks:"
 check_link ".zshrc"            "$HOME/.zshrc"
 check_link ".gitconfig"        "$HOME/.gitconfig"
 check_link ".gitignore_global" "$HOME/.gitignore_global"
+check_link ".gitconfig.local"  "$HOME/.gitconfig.local"
 check_link "ssh config"        "$HOME/.ssh/config"
 check_link "atuin config"      "$HOME/.config/atuin/config.toml"
 check_link "gh config"         "$HOME/.config/gh/config.yml"
@@ -81,9 +85,14 @@ check "signing key set"        test "$(git config user.signingkey)" != "ssh-ed25
 
 echo ""
 echo "Other:"
-check "1Password SSH agent"    test -S "$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
-check ".hushlogin"             test -f "$HOME/.hushlogin"
-check "iTerm2 shell integration" test -f "$HOME/.iterm2_shell_integration.zsh"
+if [[ "$OS" == "Darwin" ]]; then
+    check "1Password SSH agent"      test -S "$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+    check ".hushlogin"               test -f "$HOME/.hushlogin"
+    check "iTerm2 shell integration" test -f "$HOME/.iterm2_shell_integration.zsh"
+else
+    check "1Password SSH agent"      test -S "$HOME/.1password/agent.sock"
+    check "zsh is default shell"     test "$(basename "$SHELL")" = "zsh"
+fi
 
 echo ""
 echo "Results: $pass passed, $fail failed"

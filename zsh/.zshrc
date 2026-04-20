@@ -4,8 +4,10 @@ export VISUAL="code --wait"
 set -o vi
 
 # === Path ===
-export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:$PATH"
-export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"
+if [[ "$(uname)" == "Darwin" ]]; then
+    export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:$PATH"
+    export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"
+fi
 export PATH="$HOME/go/bin:$PATH"
 export PATH="$HOME/.local/bin:$PATH"
 
@@ -26,19 +28,41 @@ eval "$(mise activate zsh)"
 eval "$(atuin init zsh)"
 eval "$(fzf --zsh)"
 
+# === Zsh Plugins ===
+if [[ "$(uname)" == "Darwin" ]]; then
+    source "$(brew --prefix)/share/zsh-autosuggestions/zsh-autosuggestions.zsh" 2>/dev/null
+    source "$(brew --prefix)/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" 2>/dev/null
+else
+    source /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh 2>/dev/null \
+        || source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh 2>/dev/null
+    source /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh 2>/dev/null \
+        || source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh 2>/dev/null
+fi
+
 # === 1Password ===
-export SSH_AUTH_SOCK=~/Library/Group\ Containers/2BUA8C4S2C.com.1password/t/agent.sock
+if [[ "$(uname)" == "Darwin" ]]; then
+    export SSH_AUTH_SOCK=~/Library/Group\ Containers/2BUA8C4S2C.com.1password/t/agent.sock
+else
+    export SSH_AUTH_SOCK=~/.1password/agent.sock
+fi
 
 # === FZF ===
+if [[ "$(uname)" == "Darwin" ]]; then
+    COPY_CMD="pbcopy"
+else
+    COPY_CMD="xclip -selection clipboard"
+fi
 export FZF_CTRL_R_OPTS="
   --preview 'echo {}' --preview-window up:3:hidden:wrap
   --bind 'ctrl-/:toggle-preview'
-  --bind 'ctrl-y:execute-silent(echo -n {2..} | pbcopy)+abort'
+  --bind 'ctrl-y:execute-silent(echo -n {2..} | $COPY_CMD)+abort'
   --color header:italic
   --header 'Press CTRL-Y to copy command into clipboard'"
 
-# === iTerm2 ===
-test -e "$HOME/.iterm2_shell_integration.zsh" && source "$HOME/.iterm2_shell_integration.zsh"
+# === iTerm2 (macOS only) ===
+if [[ "$(uname)" == "Darwin" ]]; then
+    test -e "$HOME/.iterm2_shell_integration.zsh" && source "$HOME/.iterm2_shell_integration.zsh"
+fi
 
 # === Aliases ===
 alias hist="history | fzf"
