@@ -20,7 +20,7 @@ autoload -Uz vcs_info
 precmd() { vcs_info }
 zstyle ':vcs_info:git:*' formats ' (%b)'
 setopt PROMPT_SUBST
-PROMPT='%F{green}%~%f${vcs_info_msg_0_} %# '
+PROMPT='%F{green}➜%f %F{cyan}%c%f${vcs_info_msg_0_} '
 
 # === Tool Integrations ===
 eval "$(zoxide init zsh)"
