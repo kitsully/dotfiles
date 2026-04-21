@@ -113,16 +113,43 @@ LazyVim-based config with extras for: Claude Code AI, Docker, Git, Java, JSON, P
 
 ## Post-Setup (Manual)
 
-### macOS
-1. Sign into 1Password and enable SSH agent
-2. Update signingkey in `~/.gitconfig` with your SSH public key
-3. Sign into iCloud / Mac App Store (required for `mas` installs)
-4. Sign into Raycast for cloud sync
-5. Activate licenses: Keyboard Maestro, TextExpander, Setapp
-6. `npm install -g @anthropic-ai/claude-code`
+### 1. 1Password + SSH Keys
 
-### Linux
-1. Install and configure 1Password with SSH agent
-2. Update signingkey in `~/.gitconfig` with your SSH public key
-3. `npm install -g @anthropic-ai/claude-code`
-4. Log out and back in for zsh to take effect
+The dotfiles are configured to use 1Password's SSH agent for both SSH auth *and* Git commit signing. After installing 1Password:
+
+1. **Sign into 1Password** and unlock the vault
+2. **Enable the SSH agent**:
+   - macOS: 1Password > Settings > Developer > "Use the SSH agent"
+   - Linux: 1Password > Settings > Developer > "Use the SSH agent" (also enable "Integrate with 1Password CLI" if using `op`)
+3. **Store your SSH key in 1Password** (if not already there):
+   - Create a new item of type "SSH Key"
+   - Either generate a new ed25519 key, or import an existing one
+   - The public key is available in the item's details
+4. **Verify the signing key in `git/.gitconfig`** matches your 1Password SSH key:
+   ```bash
+   # Show the public key currently being offered by the agent:
+   ssh-add -L
+   # Compare with what's set in the repo:
+   grep signingkey ~/dotfiles/git/.gitconfig
+   ```
+   If they don't match, edit `git/.gitconfig` and commit the update.
+5. **Add the public key to GitHub** (and any other Git hosts):
+   - GitHub > Settings > SSH and GPG keys
+   - Add it as both an **Authentication key** (for SSH) and a **Signing key** (for verified commits)
+6. **Test it**:
+   ```bash
+   ssh -T git@github.com              # should greet you by username
+   git commit --allow-empty -m test   # should succeed without prompting
+   ```
+
+### 2. Other Manual Steps
+
+**macOS**
+- Sign into iCloud / Mac App Store (required for `mas` installs)
+- Sign into Raycast for cloud sync
+- Activate licenses: Keyboard Maestro, TextExpander, Setapp
+- `npm install -g @anthropic-ai/claude-code`
+
+**Linux**
+- `npm install -g @anthropic-ai/claude-code`
+- Log out and back in for zsh to take effect
