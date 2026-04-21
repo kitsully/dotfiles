@@ -10,9 +10,61 @@ cd ~/dotfiles
 ./setup.sh
 ```
 
-`setup.sh` detects the platform and handles everything automatically:
-- **macOS**: Xcode CLI tools, Homebrew, Brewfile packages, symlinks, VS Code extensions, macOS preferences
-- **Linux**: Distro-native packages (Ubuntu, Fedora, RHEL/CentOS, Arch), standalone tool installs, symlinks, VS Code extensions
+`setup.sh` auto-detects the platform. You can also pass it explicitly:
+
+```bash
+./setup.sh mac
+./setup.sh linux
+```
+
+What it handles per platform:
+- **mac**: Xcode CLI tools, Homebrew, Brewfile packages, symlinks, VS Code extensions, FZF, iTerm2, macOS preferences
+- **linux**: Distro-native packages (Ubuntu, Fedora, RHEL/CentOS, Arch), standalone tool installs, symlinks, VS Code extensions
+
+### Skipping Steps
+
+If package installs are failing or you only need part of the setup, pass `--skip-*` flags after the platform:
+
+```bash
+# Skip all heavy installs — run symlinks, VS Code, macOS defaults, doctor, etc.
+./setup.sh mac --skip-installs
+
+# Skip only Homebrew + brew bundle, run everything else
+./setup.sh mac --skip-brew --skip-packages
+
+# Just re-link dotfiles, nothing else
+./setup.sh mac --skip-installs --skip-vscode --skip-fzf --skip-iterm2 --skip-macos-defaults --skip-doctor
+```
+
+**macOS flags**
+
+| Flag | What it skips |
+|------|--------------|
+| `--skip-installs` | Shorthand: skips `--skip-xcode`, `--skip-brew`, `--skip-packages`, `--skip-fzf` |
+| `--skip-xcode` | Xcode CLI tools install + license accept |
+| `--skip-brew` | Homebrew install |
+| `--skip-packages` | `brew bundle` |
+| `--skip-fzf` | FZF shell integration |
+| `--skip-iterm2` | iTerm2 shell integration download |
+| `--skip-macos-defaults` | macOS system preferences (`macos-defaults.sh`) |
+
+**Linux flags**
+
+| Flag | What it skips |
+|------|--------------|
+| `--skip-installs` | Shorthand: skips `--skip-packages` |
+| `--skip-packages` | `linux/packages.sh` + chsh to zsh |
+
+**Both platforms**
+
+| Flag | What it skips |
+|------|--------------|
+| `--skip-dirs` | Creating `~/Code` and `~/docs/screenshots` |
+| `--skip-symlinks` | Dotfile symlinking (`install.sh`) |
+| `--skip-vscode` | VS Code extension installs |
+| `--skip-doctor` | Health check (`doctor.sh`) |
+
+Flags can be combined freely — any step not explicitly skipped will still run.
 
 ## Updating an Existing Machine
 
@@ -63,9 +115,9 @@ To verify everything is in order:
 | `vscode/extensions.txt` | VS Code extension list (installed by setup.sh) |
 | `iterm2/Default.json` | iTerm2 profile (loaded via DynamicProfiles on macOS) |
 
-## Platform Detection
+## Linux Distro Support
 
-Scripts use `uname` to detect macOS vs Linux. On Linux, `linux/packages.sh` reads `/etc/os-release` to detect the distro family:
+`setup.sh` auto-detects macOS vs Linux via `uname`. On Linux, `linux/packages.sh` further reads `/etc/os-release` to detect the distro family:
 
 | Distro | Package Manager |
 |--------|----------------|
