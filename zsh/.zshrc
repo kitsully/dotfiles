@@ -15,12 +15,20 @@ export PATH="$HOME/.local/bin:$PATH"
 autoload -Uz compinit && compinit
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
 
-# === Prompt (git branch via vcs_info) ===
+# === Prompt (robbyrussell-style via vcs_info) ===
 autoload -Uz vcs_info
-precmd() { vcs_info }
-zstyle ':vcs_info:git:*' formats ' (%b)'
 setopt PROMPT_SUBST
-PROMPT='%F{green}➜%f %F{cyan}%c%f${vcs_info_msg_0_} '
+
+zstyle ':vcs_info:*' enable git
+zstyle ':vcs_info:git:*' check-for-changes true
+zstyle ':vcs_info:git:*' unstagedstr   ' %F{yellow}✗'
+zstyle ':vcs_info:git:*' stagedstr     ' %F{yellow}✗'
+zstyle ':vcs_info:git:*' formats       ' %F{blue}git:(%F{red}%b%F{blue})%f%u%c'
+zstyle ':vcs_info:git:*' actionformats ' %F{blue}git:(%F{red}%b|%a%F{blue})%f%u%c'
+
+precmd() { vcs_info }
+
+PROMPT='%B%(?.%F{green}.%F{red})➜%f%b %B%F{cyan}%c%f%b${vcs_info_msg_0_} '
 
 # === Tool Integrations ===
 eval "$(zoxide init zsh)"
