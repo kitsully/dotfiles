@@ -234,7 +234,14 @@ do_packages() {
     # off-screen, which looks exactly like a hang — say up front whether any
     # prompt can appear at all, so a long silence reads correctly
     if [ -n "${SUDO_ASKPASS:-}" ]; then
-        info "installer passwords are answered automatically — a long pause is a download or install, never a hidden prompt"
+        # trust the mechanism only after checking it, not just the variable:
+        # if the helper or password file went missing mid-run, promising
+        # "never a hidden prompt" here would be exactly wrong
+        if [ -x "$SUDO_ASKPASS" ] && [ -s "${ASKPASS_DIR:-/nonexistent}/pw" ]; then
+            info "installer passwords are answered automatically — a long pause is a download or install, never a hidden prompt"
+        else
+            warn "the stored password went missing — pkg installers may prompt below (or fail); re-run ./setup.sh if they do"
+        fi
     elif [ -t 0 ]; then
         warn "no stored password — pkg installers WILL prompt below, and the prompt can get buried by download output; if this looks stuck, type your password and press Enter"
     fi
