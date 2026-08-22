@@ -9,6 +9,7 @@
 # === CLI Tools ===
 brew "doctl"                 # personal DigitalOcean account
 brew "heroku"                # personal Heroku account
+brew "xcodegen"              # personal Xcode project generation
 
 # === Cask Apps ===
 cask "airbuddy"              # personal AirPods/device battery HUD

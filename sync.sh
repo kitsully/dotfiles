@@ -10,6 +10,12 @@
 # Nothing is committed or pushed for you; git is the undo button, which is
 # what makes applying safe.
 #
+# Sync only ever goes machine -> repo, and only ever adds. The other
+# direction is brew's own command — to uninstall everything this machine
+# has that the config does not, App Store apps and taps included, so
+# always look at the list it prints without --force first:
+#   cat Brewfile "Brewfile.$(cat ~/.config/dotfiles/profile)" | brew bundle cleanup --file=- --force
+#
 # To add a target: write a sync_<thing>() below that compares live state with
 # the repo copy, prints what drifted, and rewrites the repo file unless
 # DRY_RUN is true — then call it in the list at the bottom.

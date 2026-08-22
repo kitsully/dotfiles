@@ -52,6 +52,11 @@ Each of these is also answered by a comment in the file you would edit.
 - **Change a language runtime version** — edit `config/mise/config.toml`
   (node, python, go live there, not in the Brewfiles), then re-run
   `./setup.sh`. A project can override with its own `.mise.toml`.
+- **Make a machine match the config exactly** — removing what the repo does
+  not track is deliberately not sync's job (sync only adds). Brew does it:
+  `cat Brewfile Brewfile.<profile> | brew bundle cleanup --file=- --force`.
+  It uninstalls App Store apps and taps too, so run it without `--force`
+  first and read the list.
 - **Add a health check** — one `check` line in `doctor.sh` (the header shows
   the shape). Package and symlink checks are derived, so those never need
   editing.
