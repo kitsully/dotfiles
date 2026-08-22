@@ -245,6 +245,11 @@ Notes on how it behaves:
 | `--no-commit` | Update the files but leave them uncommitted |
 | `--work` / `--personal` | Which profile this machine uses |
 
+**Adding something to sync.** `sync.sh` has no list of targets in it. It loads
+every file in `lib/sync.d/` and takes the name from the filename, so a new
+target is a new file defining four functions — `_label`, `_detect`, `_report`
+and `_apply`. `lib/sync.d/README.md` has the contract and a skeleton.
+
 ## Updating an Existing Machine
 
 After making changes on one machine, pull them down on another:
@@ -283,6 +288,7 @@ To verify everything is in order:
 | `setup.sh` | Main bootstrap script (run once on a fresh machine) |
 | `sync.sh` | Reports drift in packages, VS Code extensions and the iTerm2 profile, then commits |
 | `lib/ui.sh` | Shared colours, prompts, progress bars and the checkbox picker |
+| `lib/sync.d/` | One file per thing `sync.sh` can sync — see the README in there to add another |
 | `install.sh` | Creates symlinks — platform-aware for git and SSH configs |
 | `doctor.sh` | Health check — verifies tools, symlinks, and config |
 | `macos-defaults.sh` | macOS system preferences (dark mode, dock, keyboard, Finder) |
