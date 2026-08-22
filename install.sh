@@ -38,6 +38,7 @@ link() {
 link "$DOTFILES/zsh/.zshrc"             "$HOME/.zshrc"
 link "$DOTFILES/git/.gitconfig"         "$HOME/.gitconfig"
 link "$DOTFILES/git/.gitignore_global"  "$HOME/.gitignore_global"
+link "$DOTFILES/claude/settings.json"   "$HOME/.claude/settings.json"
 
 if [ "$OS" = Darwin ]; then
     link "$DOTFILES/git/.gitconfig-macos.local" "$HOME/.gitconfig.local"
