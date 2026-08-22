@@ -6,12 +6,12 @@
   "permissions": {
     "defaultMode": "auto"
   },
-  "model": "opus",
-  "effortLevel": "medium",
+  "model": "fable",
   "enabledPlugins": {
     "frontend-design@claude-plugins-official": true,
     "swift-lsp@claude-plugins-official": true
   },
+  "effortLevel": "medium",
   "tui": "fullscreen",
   "skipWorkflowUsageWarning": true,
   "agentPushNotifEnabled": true,
