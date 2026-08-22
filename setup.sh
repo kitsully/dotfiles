@@ -160,8 +160,23 @@ do_packages() {
         bundle_flags="$bundle_flags --no-upgrade"
         info "installing missing packages only — pass --upgrade to also update installed ones"
     fi
-    run brew bundle $bundle_flags --file="$SCRIPT_DIR/Brewfile" || return 1
-    run brew bundle $bundle_flags --file="$SCRIPT_DIR/Brewfile.$PROFILE" || return 1
+    # If the only things a bundle could not install are App Store apps, the
+    # step still succeeds with a warning: mas needs an App Store sign-in that
+    # a fresh machine does not have yet — and a VM cannot have at all.
+    bundle_one() {
+        run brew bundle $bundle_flags --file="$1" && return 0
+        [ "$DRY_RUN" = true ] && return 1
+        local missing
+        missing="$(HOMEBREW_BUNDLE_NO_UPGRADE=1 brew bundle check --verbose --file="$1" 2>&1 \
+            | sed -n 's/^→ \(.*\) needs to be.*$/\1/p')"
+        if [ -n "$missing" ] && [ "$(printf '%s\n' "$missing" | grep -cv '^App ')" -eq 0 ]; then
+            warn "App Store apps skipped (sign in, then re-run): $(printf '%s\n' "$missing" | sed 's/^App //' | awk 'NR>1 { printf ", " } { printf "%s", $0 } END { print "" }')"
+            return 0
+        fi
+        return 1
+    }
+    bundle_one "$SCRIPT_DIR/Brewfile" || return 1
+    bundle_one "$SCRIPT_DIR/Brewfile.$PROFILE" || return 1
 }
 
 do_dirs() { run mkdir -p "$HOME/Code" "$HOME/Desktop/screenshots"; }

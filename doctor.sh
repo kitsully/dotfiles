@@ -55,15 +55,22 @@ soft() { local label="$1" why="$2" fix="$3"; shift 4
 }
 
 check_bundle() { # label  brewfile — a failure names exactly what is missing
-    local label="$1" file="$2" out missing
+    local label="$1" file="$2" out list missing
     # NO_UPGRADE: report only what is missing, not what is merely outdated
     if out="$(HOMEBREW_BUNDLE_NO_UPGRADE=1 brew bundle check --verbose --file="$file" 2>&1)"; then
         pass_line "$label"; return 0
     fi
-    missing="$(printf '%s\n' "$out" \
+    list="$(printf '%s\n' "$out" \
         | sed -n 's/^→ \(.*\) needs to be.*$/\1/p' \
-        | sed 's/^Formula /brew /; s/^Cask /cask /; s/^App /mas /' \
-        | awk 'NR>1 { printf ", " } { printf "%s", $0 } END { print "" }')"
+        | sed 's/^Formula /brew /; s/^Cask /cask /; s/^App /mas /')"
+    missing="$(printf '%s\n' "$list" | awk 'NR>1 { printf ", " } { printf "%s", $0 } END { print "" }')"
+    # only App Store apps missing is expected until the machine is signed in
+    # (and forever on a VM, which cannot sign in) — safe to ignore, not broken
+    if [ -n "$list" ] && [ "$(printf '%s\n' "$list" | grep -cv '^mas ')" -eq 0 ]; then
+        soft "$label" "Only App Store apps are missing: $missing" \
+            "Sign into the App Store, then run ./setup.sh." -- false
+        return 0
+    fi
     [ -z "$missing" ] && missing="brew bundle check failed: $(printf '%s' "$out" | head -1)"
     fail_line "$label" "Not installed here: $missing" "Run ./setup.sh — brew bundle installs what is missing."
 }
