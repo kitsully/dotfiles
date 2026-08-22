@@ -1,16 +1,17 @@
-# Dock layout for work machines — one app path per line, top to bottom
+# Dock layout for work machines — one app name per line, top to bottom
 # becomes left to right. Reorder lines to reorder the Dock; # comments and
 # blank lines are ignored. Apps not installed yet are skipped with a warning.
-# Applied by setup.sh (declarative: the Dock is set to exactly this list).
+# A full /path/to.app also works for apps outside the standard folders.
+# Applied by setup.sh --dock (declarative: the Dock becomes exactly this list).
 
-/Applications/iTerm.app
-/Applications/Visual Studio Code.app
-/Applications/Claude.app
-/Applications/Google Chrome.app
-/Applications/Obsidian.app
-/System/Applications/System Settings.app
+iTerm
+Visual Studio Code
+Claude
+Google Chrome
+Obsidian
+System Settings
 
 # Usually MDM-installed — uncomment once they exist on this machine:
-# /Applications/Slack.app
-# /Applications/Microsoft Outlook.app
-# /Applications/Microsoft Teams.app
+# Slack
+# Microsoft Outlook
+# Microsoft Teams

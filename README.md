@@ -50,10 +50,10 @@ Each of these is also answered by a comment in the file you would edit.
   `./setup.sh <name>`.
 - **Skip a step for one run** — comment out its `step` line at the bottom of
   `setup.sh`.
-- **Change the Dock** — edit `dock/<profile>.txt` (one app path per line,
-  top-to-bottom is left-to-right), then `./setup.sh --dock`. Without the
-  flag the Dock is never touched — the step replaces the whole layout, so
-  it is opt-in.
+- **Change the Dock** — edit `dock/<profile>.txt` (one app *name* per line,
+  top-to-bottom is left-to-right; a full path works for apps in unusual
+  places), then `./setup.sh --dock`. Without the flag the Dock is never
+  touched — the step replaces the whole layout, so it is opt-in.
 - **Add a config file** — put it under `config/`; `install.sh` links
   everything in there to the same path under `~/.config` automatically.
   Dotfiles that live directly in `~` get one `link` line in `install.sh`.
@@ -81,7 +81,7 @@ Each of these is also answered by a comment in the file you would edit.
 | `sync.sh` | Folds brew/VS Code/iTerm2 drift back into the repo |
 | `doctor.sh` | Health check, report-only |
 | `macos-defaults.sh` | macOS system preferences (dock, keyboard, Finder…) |
-| `dock/<profile>.txt` | Dock layout per profile: one app path per line, in order; `setup.sh --dock` applies it with `dockutil` (opt-in) |
+| `dock/<profile>.txt` | Dock layout per profile: one app name per line, in order; `setup.sh --dock` applies it with `dockutil` (opt-in) |
 | `linux/packages.sh` | Distro-native packages: Ubuntu/Debian, Fedora, RHEL, Arch |
 | `zsh/`, `git/`, `ssh/`, `config/`, `iterm2/`, `vscode/` | The actual configs |
 

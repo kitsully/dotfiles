@@ -236,6 +236,18 @@ do_macos_defaults() { run bash "$SCRIPT_DIR/macos-defaults.sh"; }
 
 # Dock layout is declarative: dock/<profile>.txt lists the apps in order,
 # and the Dock is set to exactly that list. Edit the file to change it.
+# Entries are plain app names ("iTerm", "Visual Studio Code"), found in the
+# standard app folders; a full /path/to.app also works for anything unusual.
+dock_resolve() { # name-or-path -> absolute app path on stdout
+    case "$1" in /*) printf '%s\n' "$1"; [ -e "$1" ]; return ;; esac
+    local d
+    for d in /Applications /Applications/Utilities /System/Applications /System/Applications/Utilities "$HOME/Applications"; do
+        [ -e "$d/$1.app" ] && { printf '%s\n' "$d/$1.app"; return 0; }
+        [ -e "$d/$1" ]     && { printf '%s\n' "$d/$1"; return 0; }
+    done
+    return 1
+}
+
 do_dock() {
     local list="$SCRIPT_DIR/dock/$PROFILE.txt"
     [ "$DOCK" = false ] && { info "off by default (replaces the current Dock) — pass --dock to apply dock/$PROFILE.txt"; return 0; }
@@ -243,11 +255,11 @@ do_dock() {
     command -v dockutil >/dev/null 2>&1 || { warn "dockutil not installed (it is in the Brewfile) — skipping"; return 0; }
     if [ "$DRY_RUN" = true ]; then info "would set the Dock from dock/$PROFILE.txt"; return 0; fi
     dockutil --remove all --no-restart >/dev/null 2>&1
-    local app missing=""
+    local app path missing=""
     while IFS= read -r app; do
         case "$app" in ''|\#*) continue ;; esac
-        if [ -e "$app" ]; then
-            dockutil --add "$app" --no-restart >/dev/null 2>&1 || warn "could not add ${app##*/}"
+        if path="$(dock_resolve "$app")"; then
+            dockutil --add "$path" --no-restart >/dev/null 2>&1 || warn "could not add ${app##*/}"
         else
             missing="$missing${app##*/}, "
         fi

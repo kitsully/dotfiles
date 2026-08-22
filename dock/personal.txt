@@ -1,15 +1,15 @@
-# Dock layout for personal machines — one app path per line, top to bottom
+# Dock layout for personal machines — one app name per line, top to bottom
 # becomes left to right. Reorder lines to reorder the Dock; # comments and
 # blank lines are ignored. Apps not installed yet are skipped with a warning.
-# Applied by setup.sh (declarative: the Dock is set to exactly this list).
+# A full /path/to.app also works for apps outside the standard folders.
+# Applied by setup.sh --dock (declarative: the Dock becomes exactly this list).
 
-/System/Applications/Launchpad.app
-/Applications/iTerm.app
-/Applications/Visual Studio Code.app
-/Applications/Claude.app
-/Applications/Google Chrome.app
-/Applications/Firefox.app
-/Applications/Obsidian.app
-/Applications/Tower.app
-/System/Applications/Messages.app
-/System/Applications/System Settings.app
+iTerm
+Visual Studio Code
+Claude
+Google Chrome
+Firefox
+Obsidian
+Tower
+Messages
+System Settings
