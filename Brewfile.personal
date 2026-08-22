@@ -20,6 +20,7 @@ cask "imazing"               # personal iOS device backups
 cask "setapp"                # personal subscription
 cask "soulver"               # personal license
 cask "spotify"
+cask "steam"                 # games — usually against corporate acceptable-use policy
 cask "sublime-merge"         # personal license; redundant git GUI
 cask "sublime-text"          # personal license; redundant editor
 cask "superduper"            # disk cloning — cloning a managed work Mac is usually prohibited

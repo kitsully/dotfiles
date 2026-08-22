@@ -221,7 +221,7 @@ To verify everything is in order:
 | `ssh/config.macos` | SSH config for macOS (1Password agent) |
 | `ssh/config.linux` | SSH config for Linux (1Password agent) |
 | `config/atuin/config.toml` | Atuin shell history settings |
-| `config/nvim/` | Neovim config — LazyVim with Claude Code integration |
+| `config/nvim/` | Neovim config — LazyVim with Claude Code integration; `lazy-lock.json` pins plugin versions so every machine gets the same set |
 | `config/gh/config.yml` | GitHub CLI settings and aliases |
 | `vscode/extensions.txt` | VS Code extension list (installed by setup.sh) |
 | `iterm2/Default.json` | iTerm2 profile (loaded via DynamicProfiles on macOS) |
@@ -253,6 +253,7 @@ Tools not available in distro repos (mise, atuin, zoxide, gh) are installed via 
 ~/.config/gh/config.yml               → dotfiles/config/gh/config.yml
 ~/.config/nvim/init.lua               → dotfiles/config/nvim/init.lua
 ~/.config/nvim/lazyvim.json           → dotfiles/config/nvim/lazyvim.json
+~/.config/nvim/lazy-lock.json         → dotfiles/config/nvim/lazy-lock.json
 ~/.config/nvim/lua/config/*.lua       → dotfiles/config/nvim/lua/config/*.lua
 ~/.config/nvim/lua/plugins/claude.lua → dotfiles/config/nvim/lua/plugins/claude.lua
 ```
