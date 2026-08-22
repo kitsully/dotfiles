@@ -160,6 +160,14 @@ do_packages() {
         bundle_flags="$bundle_flags --no-upgrade"
         info "installing missing packages only — pass --upgrade to also update installed ones"
     fi
+    # brew's parallel download output can scroll a live 'Password:' prompt
+    # off-screen, which looks exactly like a hang — say up front whether any
+    # prompt can appear at all, so a long silence reads correctly
+    if [ -n "${SUDO_ASKPASS:-}" ]; then
+        info "installer passwords are answered automatically — a long pause is a download or install, never a hidden prompt"
+    elif [ -t 0 ]; then
+        warn "no stored password — pkg installers WILL prompt below, and the prompt can get buried by download output; if this looks stuck, type your password and press Enter"
+    fi
     # If the only things a bundle could not install are App Store apps, the
     # step still succeeds with a warning: mas needs an App Store sign-in that
     # a fresh machine does not have yet — and a VM cannot have at all.
