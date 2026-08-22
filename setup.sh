@@ -147,15 +147,23 @@ cleanup_askpass() {
     ASKPASS_DIR=""
 }
 if [ "$PLATFORM" = mac ] && [ "$DRY_RUN" = false ] && [ -t 0 ]; then
-    trap cleanup_askpass EXIT INT TERM
+    # a plain `trap cleanup INT` would swallow Ctrl+C: bash runs the handler
+    # and then RESUMES the script, so a signal must clean up and re-raise
+    # itself, or the run continues with the password file already wiped
+    trap cleanup_askpass EXIT
+    trap 'cleanup_askpass; trap - INT;  kill -INT  $$' INT
+    trap 'cleanup_askpass; trap - TERM; kill -TERM $$' TERM
+    trap 'cleanup_askpass; trap - HUP;  kill -HUP  $$' HUP
     tries=0
     while :; do
         printf "Password (asked once, then answers the installer prompts for you): "
         IFS= read -rs PW; printf "\n"
-        # on a machine with Touch ID for sudo, a fingerprint tap may satisfy
-        # this check instead of the typed password — that is fine, the taps
-        # then cover the installers too
-        if printf '%s\n' "$PW" | sudo -S -v 2>/dev/null; then break; fi
+        # dscl checks the typed password against the account itself. `sudo -v`
+        # cannot do this: with Touch ID for sudo enabled (re-runs), a
+        # fingerprint tap satisfies it no matter what was typed, and the typo
+        # would be stored and fed to every installer — 3 failed attempts per
+        # pkg cask, enough to trip an MDM lockout on a work machine
+        if printf '%s\n' "$PW" | dscl . -authonly "$(id -un)" >/dev/null 2>&1; then break; fi
         tries=$((tries+1))
         if [ "$tries" -ge 3 ]; then printf "That password did not work three times — stopping.\n"; PW=""; exit 1; fi
         printf "That password did not work — try again.\n"
@@ -163,6 +171,9 @@ if [ "$PLATFORM" = mac ] && [ "$DRY_RUN" = false ] && [ -t 0 ]; then
     ASKPASS_DIR="$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-setup.XXXXXX")" || exit 1
     chmod 700 "$ASKPASS_DIR"
     (umask 077; printf '%s\n' "$PW" > "$ASKPASS_DIR/pw")
+    # warm sudo's timestamp with the now-verified password (a Touch ID tap
+    # may answer this one instead — fine, the stored copy is already checked)
+    printf '%s\n' "$PW" | sudo -S -v 2>/dev/null
     PW=""
     printf '#!/bin/sh\nexec cat "%s"\n' "$ASKPASS_DIR/pw" > "$ASKPASS_DIR/askpass"
     chmod 700 "$ASKPASS_DIR/askpass"
@@ -233,9 +244,18 @@ do_packages() {
     bundle_one() {
         run brew bundle $bundle_flags --file="$1" && return 0
         [ "$DRY_RUN" = true ] && return 1
-        local missing
-        missing="$(HOMEBREW_BUNDLE_NO_UPGRADE=1 brew bundle check --verbose --file="$1" 2>&1 \
-            | sed -n 's/^→ \(.*\) needs to be.*$/\1/p')"
+        local check missing
+        # the check must see what the failed bundle was trying to do: in
+        # --upgrade mode an installed-but-outdated package IS the failure,
+        # and forcing NO_UPGRADE here would hide a failed upgrade and misread
+        # the run as "only App Store apps missing" — a green step on a broken
+        # machine
+        if [ "$UPGRADE" = true ]; then
+            check="$(brew bundle check --verbose --file="$1" 2>&1)"
+        else
+            check="$(HOMEBREW_BUNDLE_NO_UPGRADE=1 brew bundle check --verbose --file="$1" 2>&1)"
+        fi
+        missing="$(printf '%s\n' "$check" | sed -n 's/^→ \(.*\) needs to be.*$/\1/p')"
         if [ -n "$missing" ] && [ "$(printf '%s\n' "$missing" | grep -cv '^App ')" -eq 0 ]; then
             warn "App Store apps skipped (sign in, then re-run): $(printf '%s\n' "$missing" | sed 's/^App //' | awk 'NR>1 { printf ", " } { printf "%s", $0 } END { print "" }')"
             return 0
@@ -316,6 +336,31 @@ do_iterm2() {
     fi
 }
 
+# Raycast gets ⌘Space and Spotlight's own hotkey turns off, so the two stop
+# fighting over the chord. Runs after the packages step because Raycast has
+# to exist first; a machine without Raycast keeps Spotlight untouched.
+do_raycast_hotkey() {
+    [ -d "/Applications/Raycast.app" ] || { info "Raycast is not installed — Spotlight keeps ⌘Space"; return 0; }
+    if [ "$DRY_RUN" = true ]; then info "would give ⌘Space to Raycast and disable Spotlight's hotkey"; return 0; fi
+    if [ "$(defaults read com.raycast.macos raycastGlobalHotkey 2>/dev/null)" = "Command-49" ]; then
+        ok "Raycast already on ⌘Space"
+    elif pgrep -xq Raycast; then
+        # a running Raycast rewrites its prefs on quit, clobbering this edit
+        warn "Raycast is running — set ⌘Space in Raycast Settings > General, or quit it and re-run ./setup.sh"
+    else
+        # Command modifier = 1048576; key 49 = Space; Raycast reads this at launch
+        defaults write com.raycast.macos raycastGlobalHotkey -string "Command-49"
+        ok "Raycast hotkey — ⌘Space"
+    fi
+    # symbolic hotkey 64 is 'Show Spotlight search'; disabled but the chord
+    # is kept recorded, so flipping it back on in System Settings still works
+    defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 64 \
+        '<dict><key>enabled</key><false/><key>value</key><dict><key>type</key><string>standard</string><key>parameters</key><array><integer>32</integer><integer>49</integer><integer>1048576</integer></array></dict></dict>'
+    # best effort: reloads hotkeys without a logout; harmless if it is gone
+    /System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u 2>/dev/null
+    ok "Spotlight hotkey — off (a logout makes it stick if not immediate)"
+}
+
 # 1Password's SSH agent serves the keys ssh/config.macos points at. Its
 # toggle lives in an UNOFFICIAL file (settings.json inside the app's group
 # container) — a private format an update may move or ignore, and the
@@ -391,24 +436,31 @@ do_macos_defaults() { run bash "$SCRIPT_DIR/macos-defaults.sh"; }
 # miss warns with the installed apps whose names contain it.
 DOCK_APP_DIRS=(/Applications /Applications/Utilities /System/Applications /System/Applications/Utilities "$HOME/Applications")
 
+# find treats -iname as a glob, so names are escaped first: "Foo [Beta]"
+# must match itself literally, "*" must never match everything (or, at
+# depth 0, the app folder itself — docking all of /Applications).
+dock_glob_escape() { printf '%s' "$1" | sed 's/[][*?\\]/\\&/g'; }
+
 dock_resolve() { # name-or-path -> absolute app path on stdout
     case "$1" in /*) printf '%s\n' "$1"; [ -e "$1" ]; return ;; esac
-    local d hit
+    local d hit esc
     for d in "${DOCK_APP_DIRS[@]}"; do
         [ -e "$d/$1.app" ] && { printf '%s\n' "$d/$1.app"; return 0; }
-        [ -e "$d/$1" ]     && { printf '%s\n' "$d/$1"; return 0; }
+        case "$1" in *.app) [ -e "$d/$1" ] && { printf '%s\n' "$d/$1"; return 0; } ;; esac
     done
+    esc="$(dock_glob_escape "$1")"
     for d in "${DOCK_APP_DIRS[@]}"; do
-        hit="$(find "$d" -maxdepth 1 \( -iname "$1.app" -o -iname "$1" \) 2>/dev/null | head -1)"
-        [ -n "$hit" ] && { printf '%s\n' "$hit"; return 0; }
+        hit="$(find "$d" -mindepth 1 -maxdepth 1 \( -iname "$esc.app" -o -iname "$esc" \) 2>/dev/null | head -1)"
+        case "$hit" in *.app) printf '%s\n' "$hit"; return 0 ;; esac
     done
     return 1
 }
 
 dock_suggest() { # name -> comma-joined installed apps containing it
-    local d
+    local d esc
+    esc="$(dock_glob_escape "$1")"
     for d in "${DOCK_APP_DIRS[@]}"; do
-        find "$d" -maxdepth 1 -iname "*$1*.app" 2>/dev/null
+        find "$d" -mindepth 1 -maxdepth 1 -iname "*$esc*.app" 2>/dev/null
     done | sed 's|.*/||; s|\.app$||' | sort -u \
          | awk 'NR>1 { printf ", " } { printf "%s", $0 } END { print "" }'
 }
@@ -417,23 +469,46 @@ do_dock() {
     local list="$SCRIPT_DIR/dock/$PROFILE.txt"
     [ "$DOCK" = false ] && { info "off by default (replaces the current Dock) — pass --dock to apply dock/$PROFILE.txt"; return 0; }
     [ -f "$list" ] || { info "no dock/$PROFILE.txt in the repo — skipping"; return 0; }
-    command -v dockutil >/dev/null 2>&1 || { warn "dockutil not installed (it is in the Brewfile) — skipping"; return 0; }
-    if [ "$DRY_RUN" = true ]; then info "would set the Dock from dock/$PROFILE.txt"; return 0; fi
-    dockutil --remove all --no-restart >/dev/null 2>&1
-    local app path hint missing=""
+    if [ "$DRY_RUN" = false ] && ! command -v dockutil >/dev/null 2>&1; then
+        warn "dockutil not installed (it is in the Brewfile) — skipping"; return 0
+    fi
+    # resolve every name BEFORE touching the Dock: the wipe is the one
+    # destructive moment in this repo, so a bad list (typo, CRLF endings)
+    # must fail here, with the old Dock still intact — and --dry-run gets
+    # the same validation for free
+    local app path hint missing="" resolved=() count=0
     while IFS= read -r app; do
         case "$app" in ''|\#*) continue ;; esac
         if path="$(dock_resolve "$app")"; then
-            dockutil --add "$path" --no-restart >/dev/null 2>&1 || warn "could not add ${app##*/}"
+            resolved=(${resolved[@]+"${resolved[@]}"} "$path")
+            count=$((count+1))
         elif hint="$(dock_suggest "$app")" && [ -n "$hint" ]; then
             warn "'$app' not found — installed apps matching it: $hint (fix the name in dock/$PROFILE.txt)"
         else
             missing="$missing${app##*/}, "
         fi
     done < "$list"
-    killall Dock 2>/dev/null
     [ -n "$missing" ] && info "not installed yet, left out: ${missing%, } — re-run setup once installed"
-    ok "Dock set from dock/$PROFILE.txt"
+    if [ "$count" -eq 0 ]; then
+        warn "nothing in dock/$PROFILE.txt resolved to an installed app — leaving the Dock as it is"
+        return 1
+    fi
+    if [ "$DRY_RUN" = true ]; then
+        info "would replace the Dock with these $count apps:"
+        for path in "${resolved[@]}"; do info "  $path"; done
+        return 0
+    fi
+    dockutil --remove all --no-restart >/dev/null 2>&1
+    local failed=0
+    for path in "${resolved[@]}"; do
+        dockutil --add "$path" --no-restart >/dev/null 2>&1 || { warn "could not add ${path##*/}"; failed=$((failed+1)); }
+    done
+    killall Dock 2>/dev/null
+    if [ "$failed" -gt 0 ]; then
+        warn "$failed of $count apps could not be added — is dockutil healthy? (dockutil --list)"
+        return 1
+    fi
+    ok "Dock set from dock/$PROFILE.txt ($count apps)"
 }
 
 # findings here (a missing sign-in, say) are not a setup failure — always 0
@@ -490,6 +565,7 @@ if [ "$PLATFORM" = mac ]; then
     step "VS Code extensions"              do_vscode
     step "fzf shell integration"           do_fzf
     step "iTerm2 shell integration"        do_iterm2
+    step "Raycast hotkey (⌘Space)"         do_raycast_hotkey
     step "1Password SSH agent"             do_1password_agent
     step "Dock layout"                     do_dock
     step "Health check"                    do_doctor
