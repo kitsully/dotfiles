@@ -46,7 +46,7 @@ step_detail() {
                         else
                             echo "distro packages, then zsh as your login shell"
                         fi ;;
-        dirs)           echo "~/Code and ~/docs/screenshots" ;;
+        dirs)           echo "~/Code and ~/Desktop/screenshots" ;;
         symlinks)       echo "links configs into \$HOME (existing files are backed up)" ;;
         vscode)         echo "$(wc -l < "$SCRIPT_DIR/vscode/extensions.txt" | tr -d ' ') extensions" ;;
         fzf)            echo "key bindings and completion" ;;
@@ -109,8 +109,8 @@ do_packages() {
 }
 
 do_dirs() {
-    run_live mkdir -p "$HOME/Code" "$HOME/docs/screenshots" || return 1
-    ok_done "~/Code, ~/docs/screenshots"
+    run_live mkdir -p "$HOME/Code" "$HOME/Desktop/screenshots" || return 1
+    ok_done "~/Code, ~/Desktop/screenshots"
 }
 
 do_symlinks() { run_live bash "$SCRIPT_DIR/install.sh" || return 1; ok_done "dotfiles linked"; }

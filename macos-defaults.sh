@@ -41,8 +41,8 @@ defaults write com.apple.AppleMultitouchTrackpad TrackpadThreeFingerDrag -bool t
 defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadThreeFingerDrag -bool true
 
 # === Screenshots ===
-mkdir -p "$HOME/docs/screenshots"
-defaults write com.apple.screencapture location -string "$HOME/docs/screenshots"
+mkdir -p "$HOME/Desktop/screenshots"
+defaults write com.apple.screencapture location -string "$HOME/Desktop/screenshots"
 defaults write com.apple.screencapture type -string "png"
 
 # === Security ===

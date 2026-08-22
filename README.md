@@ -126,7 +126,7 @@ and you want to resume:
 
 | Flag | What it skips |
 |------|--------------|
-| `--skip-dirs` | Creating `~/Code` and `~/docs/screenshots` |
+| `--skip-dirs` | Creating `~/Code` and `~/Desktop/screenshots` |
 | `--skip-symlinks` | Dotfile symlinking (`install.sh`) |
 | `--skip-vscode` | VS Code extension installs |
 | `--skip-doctor` | Health check (`doctor.sh`) |

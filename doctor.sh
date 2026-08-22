@@ -75,7 +75,7 @@ check_link "nvim claude.lua"   "$HOME/.config/nvim/lua/plugins/claude.lua"
 echo ""
 echo "Directories:"
 check "~/Code"             test -d "$HOME/Code"
-check "~/docs/screenshots" test -d "$HOME/docs/screenshots"
+check "~/Desktop/screenshots" test -d "$HOME/Desktop/screenshots"
 
 echo ""
 echo "Git config:"
