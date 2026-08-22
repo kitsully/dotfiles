@@ -97,13 +97,18 @@ do_packages() {
         return 0
     fi
 
-    info "core packages"
-    run_live brew bundle --file="$SCRIPT_DIR/Brewfile" || return 1
+    if [ -n "$PKG_FILE" ]; then
+        info "$PKG_ITEMS_N hand-picked packages"
+        run_live brew bundle --file="$PKG_FILE" || return 1
+    else
+        info "core packages"
+        run_live brew bundle --file="$SCRIPT_DIR/Brewfile" || return 1
 
-    local pf="$SCRIPT_DIR/Brewfile.$PROFILE"
-    if [ -f "$pf" ]; then
-        info "$PROFILE packages"
-        run_live brew bundle --file="$pf" || return 1
+        local pf="$SCRIPT_DIR/Brewfile.$PROFILE"
+        if [ -f "$pf" ]; then
+            info "$PROFILE packages"
+            run_live brew bundle --file="$pf" || return 1
+        fi
     fi
     ok_done "packages installed"
 }
@@ -243,6 +248,99 @@ fi
 PLAN=""
 for k in $ALL_STEPS; do is_skipped "$k" || PLAN="$PLAN $k"; done
 
+
+# ─── Reviewing the plan ─────────────────────────────────────────────────
+PKG_FILE=""          # set when you hand-pick packages; overrides the Brewfiles
+PKG_ITEMS_N=0
+# clean up the generated Brewfile, and give the cursor back: this replaces
+# the trap lib/ui.sh set
+trap 'rm -f "$PKG_FILE" 2>/dev/null; printf "\033[?25h"' EXIT INT TERM
+
+pkg_source_lines() { # every package entry this run would install
+    grep -hE '^(tap|brew|cask|mas) ' "$SCRIPT_DIR/Brewfile" "$SCRIPT_DIR/Brewfile.$PROFILE" 2>/dev/null \
+        | awk -F'#' '{print $1}' | awk '{$1=$1};1'
+}
+
+show_some() { # file/stdin, how many to show
+    local shown=0 total=0 line
+    while IFS= read -r line; do
+        total=$((total+1))
+        if [ "$shown" -lt "$1" ]; then printf "        %s%s%s\n" "$DIM" "$line" "$RESET"; shown=$((shown+1)); fi
+    done
+    [ "$total" -gt "$shown" ] && printf "        %s… and %d more%s\n" "$DIM" $((total - shown)) "$RESET"
+    return 0
+}
+
+step_preview() {
+    case "$1" in
+        xcode)    printf "        %sxcode-select --install, only if the tools are missing%s\n" "$DIM" "$RESET" ;;
+        brew)     printf "        %sinstalls Homebrew only if 'brew' is not already there%s\n" "$DIM" "$RESET" ;;
+        packages)
+            if [ -n "$PKG_FILE" ]; then
+                printf "        %s%d hand-picked packages%s\n" "$DIM" "$PKG_ITEMS_N" "$RESET"
+                show_some 8 < "$PKG_FILE"
+            else
+                printf "        %sBrewfile + Brewfile.%s — %s formulae, %s casks, %s App Store apps%s\n" "$DIM" "$PROFILE" \
+                    "$(pkg_source_lines | grep -c '^brew ')" "$(pkg_source_lines | grep -c '^cask ')" \
+                    "$(pkg_source_lines | grep -c '^mas ')" "$RESET"
+                pkg_source_lines | show_some 6
+            fi ;;
+        dirs)     printf "        %smkdir -p ~/Code ~/Desktop/screenshots%s\n" "$DIM" "$RESET" ;;
+        symlinks)
+            printf "        %slinks these into \$HOME (anything already there is backed up to .bak)%s\n" "$DIM" "$RESET"
+            grep -E '^link ' "$SCRIPT_DIR/install.sh" | grep -oE '"\$HOME/[^"]+"$' | tr -d '"' | sed "s|\$HOME|~|" | show_some 6 ;;
+        vscode)   printf "        %s%s extensions from vscode/extensions.txt%s\n" "$DIM" "$(awk 'END{print NR}' "$SCRIPT_DIR/vscode/extensions.txt")" "$RESET"
+                  show_some 5 < "$SCRIPT_DIR/vscode/extensions.txt" ;;
+        fzf)      printf "        %sinstalls fzf's key bindings and completion into your shell%s\n" "$DIM" "$RESET" ;;
+        iterm2)   printf "        %sdownloads iterm2.com/shell_integration/zsh to ~/%s\n" "$DIM" "$RESET" ;;
+        macos_defaults)
+            printf "        %sthese system settings — some need a logout to show up%s\n" "$DIM" "$RESET"
+            grep -E '^# === ' "$SCRIPT_DIR/macos-defaults.sh" | sed 's/# === //; s/ ===//' | show_some 20 ;;
+        doctor)   printf "        %sruns every health check; changes nothing%s\n" "$DIM" "$RESET" ;;
+    esac
+}
+
+review_plan() {
+    local k n=0
+    printf "\n%sWhat each step will do%s\n" "$BOLD" "$RESET"
+    for k in $PLAN; do
+        n=$((n+1))
+        printf "\n   %s%2d  %s%s\n" "$BOLD" "$n" "$(step_label "$k")" "$RESET"
+        step_preview "$k"
+    done
+    printf "\n"
+    case " $PLAN " in
+        *" packages "*)
+            if ask_yn "Pick individual packages?" N; then choose_packages; fi ;;
+    esac
+}
+
+# Hand-pick packages. Produces PKG_FILE, a Brewfile of just the ones kept.
+PKG_ITEMS=()
+pkg_label()  { echo "${PKG_ITEMS[$(( $1 - 1 ))]}"; }
+pkg_detail() { echo ""; }
+
+choose_packages() {
+    local line i keys=""
+    PKG_ITEMS=()
+    while IFS= read -r line; do PKG_ITEMS[${#PKG_ITEMS[@]}]="$line"; done <<PKGS
+$(pkg_source_lines)
+PKGS
+    i=1
+    while [ "$i" -le "${#PKG_ITEMS[@]}" ]; do keys="$keys $i"; i=$((i+1)); done
+
+    printf "\n%sEverything that would be installed — untick what you do not want%s\n\n" "$BOLD" "$RESET"
+    checkbox_menu "$keys" pkg_label pkg_detail
+
+    PKG_FILE="${TMPDIR:-/tmp}/dotfiles-packages.$$"
+    : > "$PKG_FILE"
+    # taps must come before anything that needs them
+    for i in $CB_SELECTED; do case "$(pkg_label "$i")" in tap*) pkg_label "$i" >> "$PKG_FILE" ;; esac; done
+    for i in $CB_SELECTED; do case "$(pkg_label "$i")" in tap*) ;; *) pkg_label "$i" >> "$PKG_FILE" ;; esac; done
+    PKG_ITEMS_N=$(awk 'END{print NR}' "$PKG_FILE")
+    printf "\n"; ok "keeping $PKG_ITEMS_N of ${#PKG_ITEMS[@]} packages"
+}
+
 show_plan() {
     printf "\n%sHere is the plan%s  %s(%s profile)%s\n\n" "$BOLD" "$RESET" "$DIM" "$PROFILE" "$RESET"
     local n=0
@@ -266,11 +364,12 @@ show_plan
 
 if [ "$INTERACTIVE" = true ]; then
     while :; do
-        printf "  %s?%s Proceed? %s[Y]es / [c]ustomize / [q]uit%s " "$BOLD" "$RESET" "$DIM" "$RESET"
+        printf "  %s?%s Proceed? %s[Y]es / [r]eview / [c]ustomize / [q]uit%s " "$BOLD" "$RESET" "$DIM" "$RESET"
         read -r reply || reply=""
         case "$(printf '%s' "$reply" | tr '[:upper:]' '[:lower:]')" in
             ""|y|yes) break ;;
-            c|customize|customize) customize; show_plan ;;
+            r|review) review_plan; show_plan ;;
+            c|customize) customize; show_plan ;;
             q|quit|n|no) printf "\n  Nothing was changed.\n\n"; exit 0 ;;
         esac
     done

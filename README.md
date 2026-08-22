@@ -30,10 +30,13 @@ each step with a progress bar and a summary at the end. Nothing happens until
 you say yes.
 
 ```
-  ? Proceed? [Y]es / [c]ustomize / [q]uit
+  ? Proceed? [Y]es / [r]eview / [c]ustomize / [q]uit
 ```
 
-Pick `c` to choose the steps one at a time. To see exactly what would happen
+- **`r`** shows what every step will actually do — the packages it would
+  install, the files it would link, the macOS settings it would change — and
+  then offers to let you tick individual packages off the list.
+- **`c`** turns the steps themselves on and off. To see exactly what would happen
 without touching anything:
 
 ```bash

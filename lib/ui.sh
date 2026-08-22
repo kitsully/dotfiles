@@ -144,7 +144,12 @@ checkbox_menu() {
     done
     [ "$n" -eq 0 ] && { CB_SELECTED=""; return 0; }
 
-    if [ -z "$RESET" ] || [ "$INTERACTIVE" = false ]; then cb_numeric "$n"; return; fi
+    # The redraw trick moves the cursor up N lines, which breaks once the list
+    # is taller than the window — fall back to the numbered list instead.
+    local rows="$(tput lines 2>/dev/null || echo 24)"
+    if [ -z "$RESET" ] || [ "$INTERACTIVE" = false ] || [ "$n" -gt $(( rows - 6 )) ]; then
+        cb_numeric "$n"; return
+    fi
 
     printf "  %s↑↓ or j/k move · space toggles · a all · enter accepts%s\n\n" "$DIM" "$RESET"
     printf "\033[?25l"
