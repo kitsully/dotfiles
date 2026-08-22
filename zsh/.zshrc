@@ -84,3 +84,4 @@ fi
 
 # === Aliases ===
 alias hist="history | fzf"
+alias vim="nvim"
