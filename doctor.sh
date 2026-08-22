@@ -142,6 +142,9 @@ if [ "$OS" = Darwin ]; then
         -- test -S "$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
     check "iTerm2 integration" "iTerm2's extras (marks, command history) will not work." \
         "Run ./setup.sh" -- test -f "$HOME/.iterm2_shell_integration.zsh"
+    soft "Touch ID for sudo" "sudo asks for a typed password instead of a fingerprint." \
+        "Run ./setup.sh — the macOS preferences step sets it up." \
+        -- grep -q '^auth' /etc/pam.d/sudo_local
     soft ".hushlogin" "Only cosmetic — new terminals show the 'Last login' line." \
         "touch ~/.hushlogin" -- test -f "$HOME/.hushlogin"
 else

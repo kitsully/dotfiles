@@ -44,8 +44,14 @@ defaults write com.apple.screencapture type -string "png"
 # === Security ===
 if [ -t 0 ]; then
     sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate on
+
+    # Touch ID for sudo: fingerprint instead of a typed password.
+    # /etc/pam.d/sudo_local is Apple's hook for this and survives OS updates.
+    if [ -f /etc/pam.d/sudo_local.template ] && ! grep -q '^auth' /etc/pam.d/sudo_local 2>/dev/null; then
+        sed 's/^#auth/auth/' /etc/pam.d/sudo_local.template | sudo tee /etc/pam.d/sudo_local >/dev/null             && echo "  Touch ID enabled for sudo"
+    fi
 else
-    echo "  skipped firewall (needs sudo; no terminal to ask for a password)"
+    echo "  skipped firewall and Touch ID setup (need sudo; no terminal to ask)"
 fi
 
 # === Dialogs ===
@@ -60,7 +66,9 @@ defaults write com.apple.LaunchServices LSQuarantine -bool false
 defaults write com.apple.CrashReporter DialogType -string "none"
 
 # === Safari (dev menu) ===
-defaults write com.apple.Safari IncludeDevelopMenu -bool true
+# Safari is sandboxed; writing its prefs needs Full Disk Access for the terminal
+defaults write com.apple.Safari IncludeDevelopMenu -bool true 2>/dev/null \
+    || echo "  skipped Safari dev menu (no Full Disk Access — or turn it on in Safari > Settings > Advanced)"
 
 # === Terminal ===
 touch ~/.hushlogin  # Disable "Last login" message

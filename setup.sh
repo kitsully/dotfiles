@@ -9,6 +9,7 @@
 #                            ~/.config/dotfiles/profile
 #   ./setup.sh --upgrade     also upgrade already-installed packages to their
 #                            latest versions (default is install-missing only)
+#   ./setup.sh --upgrade     also upgrade already-installed packages
 #   ./setup.sh --dry-run     show what would run, change nothing
 #
 # To skip a step for one run, comment out its `step` line at the bottom.
@@ -67,6 +68,14 @@ if [ "$PLATFORM" = mac ]; then
         mkdir -p "${PROFILE_FILE%/*}"
         printf '%s\n' "$PROFILE" > "$PROFILE_FILE"   # sync.sh and doctor.sh read this
     fi
+fi
+
+# Ask for sudo once, up front, and keep it warm for the whole run — casks,
+# the Xcode license, and the macOS preferences all need it, and each would
+# otherwise prompt for your password again.
+if [ "$PLATFORM" = mac ] && [ "$DRY_RUN" = false ] && [ -t 0 ]; then
+    sudo -v
+    ( while kill -0 $$ 2>/dev/null; do sudo -n true 2>/dev/null; sleep 50; done ) &
 fi
 
 # ── Steps ───────────────────────────────────────────────────────────────
