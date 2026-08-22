@@ -1,0 +1,24 @@
+#!/bin/bash
+# What is this command, really? Shows every PATH match, what kind of file
+# each one is, and where symlinks lead.
+#   wtf python3
+# Targets bash 3.2 (the macOS system bash).
+
+set -uo pipefail
+
+if [ "$#" -eq 0 ]; then
+    echo "usage: wtf <command> [command ...]" >&2
+    exit 1
+fi
+
+for cmd in "$@"; do
+    if ! type -a "$cmd" 2>/dev/null; then
+        echo "wtf: $cmd: not found"
+        continue
+    fi
+    # inspect each distinct file that PATH resolves this name to
+    type -aP "$cmd" 2>/dev/null | sort -u | while IFS= read -r path; do
+        ls -l "$path"
+        file "$path" 2>/dev/null
+    done
+done

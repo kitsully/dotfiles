@@ -10,6 +10,8 @@ if [[ "$(uname)" == "Darwin" ]]; then
 fi
 export PATH="$HOME/go/bin:$PATH"
 export PATH="$HOME/.local/bin:$PATH"
+# repo bin/ — found via this file's symlink so a clone anywhere still works
+export PATH="${${:-$HOME/.zshrc}:A:h:h}/bin:$PATH"
 
 # === Homebrew ===
 # Download one thing at a time in interactive shells: parallel download
@@ -100,3 +102,5 @@ fi
 # === Aliases ===
 alias hist="history | fzf"
 alias vim="nvim"
+# cd to the frontmost Finder window (a script can't cd its parent shell)
+[[ "$(uname)" == "Darwin" ]] && alias cdf='cd "$(finder)"'

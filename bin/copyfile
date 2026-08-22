@@ -1,0 +1,13 @@
+#!/bin/bash
+# Copy a file's contents to the clipboard.
+#   copyfile ~/.ssh/git_signing_key.pub
+# Targets bash 3.2 (the macOS system bash).
+
+set -uo pipefail
+
+if [ "$#" -ne 1 ] || [ ! -f "$1" ]; then
+    echo "usage: copyfile <file>" >&2
+    exit 1
+fi
+
+clip "$1" && echo "copied $(wc -c < "$1" | tr -d ' ') bytes from $1"

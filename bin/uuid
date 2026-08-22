@@ -1,0 +1,14 @@
+#!/bin/bash
+# Print a random lowercase UUID.
+# Targets bash 3.2 (the macOS system bash).
+
+set -uo pipefail
+
+if command -v uuidgen >/dev/null 2>&1; then
+    uuidgen | tr '[:upper:]' '[:lower:]'
+elif [ -r /proc/sys/kernel/random/uuid ]; then
+    cat /proc/sys/kernel/random/uuid
+else
+    echo "uuid: no uuidgen and no /proc/sys/kernel/random/uuid" >&2
+    exit 1
+fi

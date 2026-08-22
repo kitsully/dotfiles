@@ -1,0 +1,39 @@
+#!/bin/bash
+# Convert between unix timestamps and human dates.
+#   epoch                    -> current unix time
+#   epoch 1755900000         -> that moment as a local date
+#   epoch 2026-08-22 14:30   -> that date as unix time
+# Targets bash 3.2 (the macOS system bash).
+
+set -uo pipefail
+
+if [ "$#" -eq 0 ]; then
+    date +%s
+    exit 0
+fi
+
+arg="$*"
+
+case "$arg" in
+    *[!0-9]*)
+        # date string -> epoch
+        if date --version >/dev/null 2>&1; then    # GNU date parses freely
+            date -d "$arg" +%s
+        else                                        # BSD date needs a format
+            # date-only input means midnight; without this BSD date fills
+            # the missing time fields with the current time of day
+            date -j -f '%Y-%m-%d %H:%M:%S' "$arg" +%s 2>/dev/null \
+                || date -j -f '%Y-%m-%d %H:%M' "$arg" +%s 2>/dev/null \
+                || date -j -f '%Y-%m-%d %H:%M:%S' "$arg 00:00:00" +%s 2>/dev/null \
+                || { echo "epoch: could not parse '$arg' (try YYYY-MM-DD [HH:MM])" >&2; exit 1; }
+        fi
+        ;;
+    *)
+        # epoch -> date string
+        if date --version >/dev/null 2>&1; then
+            date -d "@$arg"
+        else
+            date -r "$arg"
+        fi
+        ;;
+esac

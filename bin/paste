@@ -1,0 +1,24 @@
+#!/bin/bash
+# Print the clipboard to stdout.
+#   paste > notes.txt
+# With arguments this defers to the system paste(1) — the column-merging
+# coreutil — so scripts that call `paste -d, a b` keep working even though
+# this script shadows it on PATH.
+# Targets bash 3.2 (the macOS system bash).
+
+set -uo pipefail
+
+if [ "$#" -gt 0 ]; then
+    exec /usr/bin/paste "$@"
+fi
+
+if [ "$(uname)" = "Darwin" ]; then
+    exec pbpaste
+elif [ -n "${WAYLAND_DISPLAY:-}" ] && command -v wl-paste >/dev/null 2>&1; then
+    exec wl-paste --no-newline
+elif command -v xclip >/dev/null 2>&1; then
+    exec xclip -selection clipboard -o
+else
+    echo "paste: no clipboard tool found (install xclip or wl-clipboard)" >&2
+    exit 1
+fi

@@ -1,0 +1,20 @@
+#!/bin/bash
+# Copy the absolute path of a file (or the current directory) to the clipboard.
+#   copypath              -> /Users/you/dotfiles
+#   copypath bin/clip     -> /Users/you/dotfiles/bin/clip
+# Targets bash 3.2 (the macOS system bash).
+
+set -uo pipefail
+
+target="${1:-.}"
+
+if [ -d "$target" ]; then
+    abs="$(cd "$target" && pwd)"
+elif [ -e "$target" ]; then
+    abs="$(cd "$(dirname "$target")" && pwd)/$(basename "$target")"
+else
+    echo "copypath: no such file or directory: $target" >&2
+    exit 1
+fi
+
+printf '%s' "$abs" | clip && echo "copied: $abs"

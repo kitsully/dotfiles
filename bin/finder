@@ -1,0 +1,14 @@
+#!/bin/bash
+# Print the directory shown in the frontmost Finder window (macOS only).
+# A script cannot cd its parent shell, so pair it with the cdf alias
+# in .zshrc:  cdf  ->  cd "$(finder)"
+# Targets bash 3.2 (the macOS system bash).
+
+set -uo pipefail
+
+if [ "$(uname)" != "Darwin" ]; then
+    echo "finder: macOS only" >&2
+    exit 1
+fi
+
+osascript -e 'tell application "Finder" to POSIX path of (insertion location as alias)'

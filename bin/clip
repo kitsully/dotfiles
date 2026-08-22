@@ -1,0 +1,18 @@
+#!/bin/bash
+# Copy stdin (or the named files) to the clipboard.
+#   some-command | clip
+#   clip notes.txt
+# Targets bash 3.2 (the macOS system bash).
+
+set -uo pipefail
+
+if [ "$(uname)" = "Darwin" ]; then
+    exec pbcopy < <(cat "$@")
+elif [ -n "${WAYLAND_DISPLAY:-}" ] && command -v wl-copy >/dev/null 2>&1; then
+    exec wl-copy < <(cat "$@")
+elif command -v xclip >/dev/null 2>&1; then
+    exec xclip -selection clipboard < <(cat "$@")
+else
+    echo "clip: no clipboard tool found (install xclip or wl-clipboard)" >&2
+    exit 1
+fi
