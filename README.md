@@ -19,7 +19,7 @@ Three scripts, no menus, no prompts:
 
 | Script | Does | When |
 |--------|------|------|
-| `./setup.sh` | Installs everything: Xcode CLI tools, Homebrew, macOS preferences (early, so Touch ID covers the sudo prompts that follow), packages, symlinks, VS Code extensions, fzf + iTerm2 integration, then a health check. Add `--upgrade` to also update already-installed packages, `--dock` to also apply the Dock layout (off by default — it replaces the current Dock). | Fresh machine — and re-run any time to pick up new packages and configs. |
+| `./setup.sh` | Installs everything: Xcode CLI tools, Homebrew, macOS preferences (early, so Touch ID covers the sudo prompts that follow), packages, symlinks, VS Code extensions, fzf + iTerm2 integration, then a health check. Asks for your password once and answers the pkg-installer prompts itself; the held copy is overwritten and deleted when the run ends. Add `--upgrade` to also update already-installed packages, `--dock` to also apply the Dock layout (off by default — it replaces the current Dock). | Fresh machine — and re-run any time to pick up new packages and configs. |
 | `./sync.sh` | Folds this machine's drift back into the repo: brew packages, VS Code extensions, the iTerm2 profile. Shows each target's drift and asks before writing (`--yes` skips the asking); then shows `git status` — you review and commit. | Occasionally, at the keyboard. |
 | `./doctor.sh` | Says what is wrong and how to fix it. Changes nothing. | When in doubt. |
 

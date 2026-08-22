@@ -16,6 +16,10 @@
 # To skip a step for one run, comment out its `step` line at the bottom.
 # Manual follow-ups (sign-ins, licenses) are in README.md under "Post-Setup".
 #
+# On a Mac it asks for your password once, then answers the sudo prompts
+# from cask pkg installers itself (they ignore sudo's cache on purpose);
+# the held copy is overwritten and deleted when the run ends.
+#
 # Targets bash 3.2 (the macOS system bash). Works without a TTY, and never
 # does anything destructive because nobody was there to answer a prompt.
 
@@ -73,11 +77,41 @@ if [ "$PLATFORM" = mac ]; then
     fi
 fi
 
-# Ask for sudo once, up front, and keep it warm for the whole run — casks,
-# the Xcode license, and the macOS preferences all need it, and each would
-# otherwise prompt for your password again.
+# Ask for your password once, up front, and answer every later prompt with
+# it — both the steps that honor sudo's cache (kept warm below) and the
+# cask pkg installers that deliberately do not (Homebrew resets sudo's
+# timestamp for those, but honors SUDO_ASKPASS). The password is held in a
+# 600-permission temp file only for this run, overwritten and deleted on
+# exit. (On APFS the overwrite is best effort — copy-on-write can keep old
+# blocks — so FileVault is the real at-rest protection.)
+ASKPASS_DIR=""
+cleanup_askpass() {
+    [ -n "$ASKPASS_DIR" ] || return 0
+    [ -f "$ASKPASS_DIR/pw" ] && dd if=/dev/zero of="$ASKPASS_DIR/pw" bs=1k count=1 conv=notrunc 2>/dev/null
+    rm -rf "$ASKPASS_DIR"
+    ASKPASS_DIR=""
+}
 if [ "$PLATFORM" = mac ] && [ "$DRY_RUN" = false ] && [ -t 0 ]; then
-    sudo -v
+    trap cleanup_askpass EXIT INT TERM
+    tries=0
+    while :; do
+        printf "Password (asked once, then answers the installer prompts for you): "
+        IFS= read -rs PW; printf "\n"
+        # on a machine with Touch ID for sudo, a fingerprint tap may satisfy
+        # this check instead of the typed password — that is fine, the taps
+        # then cover the installers too
+        if printf '%s\n' "$PW" | sudo -S -v 2>/dev/null; then break; fi
+        tries=$((tries+1))
+        if [ "$tries" -ge 3 ]; then printf "That password did not work three times — stopping.\n"; PW=""; exit 1; fi
+        printf "That password did not work — try again.\n"
+    done
+    ASKPASS_DIR="$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-setup.XXXXXX")" || exit 1
+    chmod 700 "$ASKPASS_DIR"
+    (umask 077; printf '%s\n' "$PW" > "$ASKPASS_DIR/pw")
+    PW=""
+    printf '#!/bin/sh\nexec cat "%s"\n' "$ASKPASS_DIR/pw" > "$ASKPASS_DIR/askpass"
+    chmod 700 "$ASKPASS_DIR/askpass"
+    export SUDO_ASKPASS="$ASKPASS_DIR/askpass"
     ( while kill -0 $$ 2>/dev/null; do sudo -n true 2>/dev/null; sleep 50; done ) &
 fi
 
