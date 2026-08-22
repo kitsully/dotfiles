@@ -1,10 +1,6 @@
 #!/bin/bash
 # macOS system preferences
 
-# Prompt for sudo upfront and keep it alive until the script finishes
-sudo -v
-while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
-
 echo "Configuring macOS defaults..."
 
 # === Dock ===
@@ -46,7 +42,11 @@ defaults write com.apple.screencapture location -string "$HOME/Desktop/screensho
 defaults write com.apple.screencapture type -string "png"
 
 # === Security ===
-sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate on
+if [ -t 0 ]; then
+    sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate on
+else
+    echo "  skipped firewall (needs sudo; no terminal to ask for a password)"
+fi
 
 # === Dialogs ===
 defaults write NSGlobalDomain NSNavPanelExpandedStateForSaveMode -bool true

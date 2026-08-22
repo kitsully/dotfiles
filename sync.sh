@@ -1,174 +1,174 @@
 #!/bin/bash
-# Fold this machine's current state back into the repo, then commit.
+# Folds this machine's drift back into the repo — the things that live outside
+# it and never show up in `git status` on their own: brew packages, VS Code
+# extensions, the iTerm2 profile. (Symlinked configs already show up.)
 #
-# Symlinked configs (zsh, git, nvim, ...) already show up in `git status`
-# on their own. This is for the things that do not, because they live
-# outside the repo and drift silently.
+#   ./sync.sh               update the repo files, then show git status —
+#                           review with `git diff`, commit when happy
+#   ./sync.sh --dry-run     report the drift and stop
 #
-# There are no targets hard-coded here: each one is a file in lib/sync.d/.
-# See lib/sync.d/README.md to add another.
+# Nothing is committed or pushed for you; git is the undo button, which is
+# what makes applying safe.
+#
+# To add a target: write a sync_<thing>() below that compares live state with
+# the repo copy, prints what drifted, and rewrites the repo file unless
+# DRY_RUN is true — then call it in the list at the bottom.
 #
 # Targets bash 3.2 (the macOS system bash).
 
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-COLS=66
-. "$SCRIPT_DIR/lib/ui.sh"
+if [ -t 1 ] && command -v tput >/dev/null 2>&1; then
+    BOLD="$(tput bold)"; DIM="$(tput dim)"; RED="$(tput setaf 1)"
+    GREEN="$(tput setaf 2)"; YELLOW="$(tput setaf 3)"; RESET="$(tput sgr0)"
+else
+    BOLD=""; DIM=""; RED=""; GREEN=""; YELLOW=""; RESET=""
+fi
+ok()   { printf "  %s✓%s %s\n" "$GREEN" "$RESET" "$1"; }
+warn() { printf "  %s!%s %s\n" "$YELLOW" "$RESET" "$1"; }
+info() { printf "  %s%s%s\n" "$DIM" "$1" "$RESET"; }
+
+DRY_RUN=false
+case "${1:-}" in
+    "")           ;;
+    -n|--dry-run) DRY_RUN=true ;;
+    -h|--help)    awk 'NR>1 && /^#/ { sub(/^# ?/, ""); print; next } NR>1 { exit }' "$0"; exit 0 ;;
+    *)            printf "unknown flag '%s' — try --help\n" "$1"; exit 1 ;;
+esac
 
 PROFILE=""
-DRY_RUN=false
-ASSUME_YES=false
-DO_COMMIT=true
-
-usage() {
-    cat <<USAGE
-${BOLD}Dotfiles Sync${RESET} — bring the repo back in line with this machine
-
-  ${BOLD}./sync.sh${RESET}              pick what to fold in, then commit
-  ${BOLD}./sync.sh --dry-run${RESET}    show what drifted and stop
-
-${BOLD}Flags${RESET}
-  --personal | --work    which profile this machine uses (default: guessed)
-  -n, --dry-run          report only; change nothing
-  -y, --yes              accept the defaults, no questions
-      --no-commit        update the files but do not commit
-  -h, --help             this message
-USAGE
-    exit "${1:-1}"
-}
-
-for arg in "$@"; do
-    case "$arg" in
-        --work)       PROFILE=work ;;
-        --personal)   PROFILE=personal ;;
-        -n|--dry-run) DRY_RUN=true ;;
-        -y|--yes)     ASSUME_YES=true ;;
-        --no-commit)  DO_COMMIT=false ;;
-        -h|--help)    usage 0 ;;
-        *) printf "%sError:%s unknown flag '%s'\n\n" "$RED" "$RESET" "$arg"; usage ;;
-    esac
-done
-
-INTERACTIVE=true
-{ [ "$ASSUME_YES" = true ] || [ ! -t 0 ] || [ ! -t 1 ]; } && INTERACTIVE=false
-
-[ -z "$PROFILE" ] && { [ -d "/Applications/Setapp.app" ] && PROFILE=personal || PROFILE=work; }
+[ -f "$HOME/.config/dotfiles/profile" ] && PROFILE="$(cat "$HOME/.config/dotfiles/profile")"
+if [ "$(uname)" = Darwin ] && [ -z "$PROFILE" ]; then
+    printf "No profile is recorded on this machine — run ./setup.sh <profile> once first.\n"
+    exit 1
+fi
 
 TMP="${TMPDIR:-/tmp}/dotfiles-sync.$$"
 mkdir -p "$TMP"
-# also restores the cursor: this replaces the trap lib/ui.sh set
-trap 'rm -rf "$TMP"; printf "\033[?25h"' EXIT INT TERM
+trap 'rm -rf "$TMP"' EXIT INT TERM
 
-# ─── Load the targets ───────────────────────────────────────────────────
-TARGETS=""
-for f in "$SCRIPT_DIR"/lib/sync.d/*.sh; do
-    [ -f "$f" ] || continue
-    . "$f"
-    key="$(basename "$f" .sh)"; key="${key#*-}"
-    TARGETS="$TARGETS $key"
-done
+# ── Homebrew packages ───────────────────────────────────────────────────
+# Compares what is installed against Brewfile + Brewfile.$PROFILE. New
+# packages are only ever added, and go to Brewfile.$PROFILE (this kind of
+# machine); move a line into Brewfile afterwards if it belongs on every Mac.
+# Packages tracked but not installed here are reported and left alone — on a
+# fresh machine that just means you have not installed them yet.
+sync_brew() {
+    command -v brew >/dev/null 2>&1 || { info "brew: not installed — skipping"; return 0; }
+    # key mas apps by id: the name brew reports ("CARROTweather") often
+    # differs from the one in the Brewfile ("CARROT Weather")
+    _keyed() {
+        awk '{ line=$0
+               if ($0 ~ /^mas /) { match($0, /id: [0-9]+/); key = "mas " substr($0, RSTART, RLENGTH) }
+               else key = $0
+               print key "\t" line }' | sort -u -t"$(printf '\t')" -k1,1
+    }
+    _clean() { grep -hE '^(tap|brew|cask|mas) ' "$@" 2>/dev/null | awk -F'#' '{print $1}' | awk '{$1=$1};1'; }
 
-if [ -z "$TARGETS" ]; then
-    printf "%sError:%s no sync targets found in lib/sync.d/\n" "$RED" "$RESET"; exit 1
-fi
+    brew bundle dump --file=- 2>/dev/null | _clean - > "$TMP/live"
+    _keyed < "$TMP/live" > "$TMP/live.kv"
+    _clean "$SCRIPT_DIR/Brewfile" "$SCRIPT_DIR/Brewfile.$PROFILE" | _keyed > "$TMP/repo.kv"
+    cut -f1 "$TMP/live.kv" | sort -u > "$TMP/live.k"
+    cut -f1 "$TMP/repo.kv" | sort -u > "$TMP/repo.k"
+    # untracked here -> original live lines, preserving formatting
+    comm -23 "$TMP/live.k" "$TMP/repo.k" \
+        | awk -F'\t' 'NR==FNR{want[$0]=1;next} want[$1]{print $2}' - "$TMP/live.kv" > "$TMP/added"
+    NOT_HERE="$(comm -13 "$TMP/live.k" "$TMP/repo.k" | grep -c . || true)"
 
-# What a target's _detect calls to say how it went. CURRENT is set by the
-# driver so targets do not have to name themselves.
-CURRENT=""
-drift()   { _v="$1"; eval "${CURRENT}_DRIFT=yes"; eval "${CURRENT}_DETAIL=\$_v"; }
-in_sync() { _v="${1:-in sync}"; eval "${CURRENT}_DRIFT=no"; eval "${CURRENT}_DETAIL=\$_v"; }
-getvar()  { eval "printf '%s' \"\${$1:-}\""; }
-
-sync_label()   { ${1}_label; }
-sync_detail()  { getvar "${1}_DETAIL"; }
-sync_drifted() { [ "$(getvar "${1}_DRIFT")" = yes ]; }
-has_fn()       { type "$1" >/dev/null 2>&1; }
-
-# Every target must be able to describe, detect and apply itself.
-for t in $TARGETS; do
-    for fn in "${t}_label" "${t}_detect" "${t}_apply"; do
-        has_fn "$fn" || { printf "%sError:%s lib/sync.d/*%s.sh does not define %s()\n" "$RED" "$RESET" "$t" "$fn"; exit 1; }
-    done
-done
-
-banner "Dotfiles Sync" "$PROFILE profile$([ "$DRY_RUN" = true ] && echo ' · dry run')"
-printf "\n"
-
-# ─── Detect ─────────────────────────────────────────────────────────────
-spin_start "checking what changed on this machine"
-for t in $TARGETS; do
-    CURRENT="$t"
-    in_sync
-    "${t}_detect"
-done
-spin_stop
-
-DRIFTED=""
-for t in $TARGETS; do sync_drifted "$t" && DRIFTED="$DRIFTED $t"; done
-
-# ─── Report ─────────────────────────────────────────────────────────────
-for t in $DRIFTED; do
-    if has_fn "${t}_report"; then "${t}_report"; printf "\n"; fi
-done
-
-cd "$SCRIPT_DIR" || exit 1
-GIT_DIRTY="$(git status --porcelain 2>/dev/null)"
-if [ -n "$GIT_DIRTY" ]; then
-    printf "%sAlready modified in the repo%s\n" "$BOLD" "$RESET"
-    printf "%s\n" "$GIT_DIRTY" | while IFS= read -r l; do printf "      %s%s%s\n" "$DIM" "$l" "$RESET"; done
-    printf "\n"
-fi
-
-if [ -z "$DRIFTED" ] && [ -z "$GIT_DIRTY" ]; then
-    rule; ok "Everything is already in sync."; printf "\n"; exit 0
-fi
-if [ "$DRY_RUN" = true ]; then
-    rule; warn "Dry run — nothing was changed."; printf "\n"; exit 0
-fi
-
-# ─── Choose ─────────────────────────────────────────────────────────────
-SELECTED=""
-if [ -n "$DRIFTED" ]; then
-    printf "%sWhat should I fold into the repo?%s\n" "$BOLD" "$RESET"
-    checkbox_menu "$TARGETS" sync_label sync_detail sync_drifted
-    SELECTED="$CB_SELECTED"
-fi
-
-# ─── Apply ──────────────────────────────────────────────────────────────
-TOTAL=0; for t in $SELECTED; do TOTAL=$((TOTAL+1)); done
-IDX=0
-for t in $SELECTED; do
-    IDX=$((IDX+1))
-    step_header "$IDX" "$TOTAL" "$(sync_label "$t")"
-    "${t}_apply" || bad "$(sync_label "$t") failed"
-    progress "$IDX" "$TOTAL"
-done
-
-# ─── Commit ─────────────────────────────────────────────────────────────
-printf "\n"; rule
-if [ "$DO_COMMIT" = false ]; then
-    info "--no-commit given; review with: git diff"; printf "\n"; exit 0
-fi
-if [ -z "$(git status --porcelain)" ]; then
-    ok "Nothing to commit."; printf "\n"; exit 0
-fi
-
-printf "\n%sReady to commit%s\n\n" "$BOLD" "$RESET"
-git status --short | while IFS= read -r l; do printf "      %s%s%s\n" "$DIM" "$l" "$RESET"; done
-printf "\n"
-
-if ask_yn "Commit these changes?" Y; then
-    MSG="Sync dotfiles from $(hostname -s)"
-    if [ "$INTERACTIVE" = true ]; then
-        printf "  %s?%s Message %s[%s]%s " "$BOLD" "$RESET" "$DIM" "$MSG" "$RESET"
-        read -r custom || custom=""
-        [ -n "$custom" ] && MSG="$custom"
+    if [ ! -s "$TMP/added" ]; then
+        ok "brew: in sync ($NOT_HERE tracked but not installed here — left alone)"
+        return 0
     fi
-    git add -A && git commit -q -m "$MSG" && ok "committed: $(git log -1 --format=%h) $MSG"
-    printf "\n"
-    if ask_yn "Push to origin?" N; then git push && ok "pushed"; else info "not pushed — run: git push"; fi
-else
-    info "left uncommitted"
-fi
+    printf "%sbrew: installed here but not tracked%s\n" "$BOLD" "$RESET"
+    sed 's/^/      + /' "$TMP/added"
+    [ "$DRY_RUN" = true ] && return 0
+    { grep '^tap ' "$TMP/added"; grep -v '^tap ' "$TMP/added"; } >> "$SCRIPT_DIR/Brewfile.$PROFILE"
+    ok "added to Brewfile.$PROFILE"
+}
+
+# ── VS Code extensions ──────────────────────────────────────────────────
+# vscode/extensions.txt is exactly `code --list-extensions`, so applying is
+# a straight rewrite.
+sync_vscode() {
+    command -v code >/dev/null 2>&1 || { info "vscode: 'code' not on PATH — skipping"; return 0; }
+    code --list-extensions 2>/dev/null | sort > "$TMP/ext.live"
+    sort "$SCRIPT_DIR/vscode/extensions.txt" > "$TMP/ext.repo"
+    if cmp -s "$TMP/ext.live" "$TMP/ext.repo"; then ok "vscode: in sync"; return 0; fi
+    if [ ! -s "$TMP/ext.live" ] && [ -s "$TMP/ext.repo" ]; then
+        warn "vscode: 'code' reported zero extensions — that looks broken, not like drift; skipping"
+        return 0
+    fi
+    printf "%svscode: extensions changed%s\n" "$BOLD" "$RESET"
+    comm -23 "$TMP/ext.live" "$TMP/ext.repo" | sed 's/^/      + /'
+    comm -13 "$TMP/ext.live" "$TMP/ext.repo" | sed 's/^/      - /'
+    [ "$DRY_RUN" = true ] && return 0
+    cp "$TMP/ext.live" "$SCRIPT_DIR/vscode/extensions.txt"
+    ok "rewrote vscode/extensions.txt"
+}
+
+# ── iTerm2 profile ──────────────────────────────────────────────────────
+# The repo copy is a *dynamic* profile with its own Guid and name — iTerm2
+# refuses a dynamic profile that reuses the Guid of a real one. Only the
+# settings are tracked, and compared semantically (plutil emits ints where
+# the repo copy has floats).
+sync_iterm2() {
+    local plist="$HOME/Library/Preferences/com.googlecode.iterm2.plist"
+    local repo_json="$SCRIPT_DIR/iterm2/Default.json"
+    [ -f "$plist" ] && command -v plutil >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1 \
+        || { info "iterm2: plist not readable — skipping"; return 0; }
+    plutil -extract "New Bookmarks" json -o "$TMP/iterm.live" "$plist" 2>/dev/null \
+        || { info "iterm2: no profiles in the plist — skipping"; return 0; }
+
+    local verdict
+    verdict="$(DEFAULT_GUID="$(defaults read com.googlecode.iterm2 'Default Bookmark Guid' 2>/dev/null)" \
+        python3 - "$TMP/iterm.live" "$repo_json" "$TMP/iterm.new" <<'PYEOF'
+import json, os, sys
+
+DYN_GUID = "dotfiles-iterm2-default"
+DYN_NAME = "Dotfiles"
+
+live = json.load(open(sys.argv[1]))
+want = os.environ.get("DEFAULT_GUID", "")
+chosen = next((p for p in live if p.get("Guid") == want), live[0] if live else None)
+if chosen is None:
+    print("SAME"); sys.exit()
+
+norm = dict(chosen)
+norm["Guid"] = DYN_GUID
+norm["Name"] = DYN_NAME
+
+try:
+    repo = json.load(open(sys.argv[2])).get("Profiles", [])
+except Exception:
+    repo = []
+
+json.dump({"Profiles": [norm]}, open(sys.argv[3], "w"), indent=2, sort_keys=True)
+print("SAME" if repo == [norm] else "DIFF")
+PYEOF
+)"
+    if [ "$verdict" != DIFF ]; then ok "iterm2: in sync"; return 0; fi
+    printf "%siterm2: profile changed%s\n" "$BOLD" "$RESET"
+    [ "$DRY_RUN" = true ] && return 0
+    # write atomically: iTerm2 watches this file and would read a half-written
+    # copy as invalid JSON
+    cp "$TMP/iterm.new" "$repo_json.tmp" && mv -f "$repo_json.tmp" "$repo_json"
+    ok "rewrote iterm2/Default.json"
+}
+
+# ── The targets — add new ones here ─────────────────────────────────────
+sync_brew
+sync_vscode
+sync_iterm2
+
+# ── Result ──────────────────────────────────────────────────────────────
 printf "\n"
+if [ "$DRY_RUN" = true ]; then info "dry run — nothing was changed"; exit 0; fi
+cd "$SCRIPT_DIR" || exit 1
+if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+    printf "%sUncommitted changes in the repo:%s\n" "$BOLD" "$RESET"
+    git status --short | sed 's/^/    /'
+    info "review with: git diff — then commit and push yourself"
+else
+    ok "everything is in sync — nothing to commit"
+fi

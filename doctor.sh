@@ -1,269 +1,167 @@
 #!/bin/bash
-# Health check — tells you, in plain language, what is set up and what is not.
+# Health check — says what is set up, what is wrong, and how to fix it.
+# Changes nothing; the fix for most failures is re-running ./setup.sh,
+# which is safe to repeat.
 #
-# Every check knows what it is for, and every failure says what it means
-# and how to fix it. Nothing here changes anything on your machine.
+# To add a check, add one line in the right section below:
+#   check "label"  "what failure means"  "how to fix it"  -- command
+# The command's exit status is the verdict; the -- is required.
+# soft() is the same, for failures that are safe to ignore.
+#
+# Package checks come from the Brewfiles and symlink checks from
+# `install.sh --list`, so those two need no editing here.
 #
 # Targets bash 3.2 (the macOS system bash).
 
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-COLS=66
-. "$SCRIPT_DIR/lib/ui.sh"
-
-OFFER_FIX=true
-AUTO_FIX=false
-RECHECK="${DOCTOR_RECHECK:-false}"
-
-for arg in "$@"; do
-    case "$arg" in
-        --fix)     AUTO_FIX=true ;;
-        --no-fix)  OFFER_FIX=false ;;
-        -h|--help)
-            printf "%sHealth Check%s\n\n  ./doctor.sh           report, then offer to fix what it can\n  ./doctor.sh --fix     fix without asking\n  ./doctor.sh --no-fix  just report\n\n" "$BOLD" "$RESET"
-            exit 0 ;;
-        *) printf "%sError:%s unknown flag '%s'\n" "$RED" "$RESET" "$arg"; exit 1 ;;
-    esac
-done
-
-INTERACTIVE=true
-{ [ ! -t 0 ] || [ ! -t 1 ]; } && INTERACTIVE=false
-
 OS="$(uname)"
-PASS=0
-NEEDS_N=0
-IGNORE_N=0
-NEEDS=""
-IGNORE=""
-FIXES=""      # label<TAB>command, one per line
+TAB="$(printf '\t')"
 
-# Which problems this script is willing to fix by itself. Anything not
-# listed here needs a person: installing packages, clicking through
-# 1Password's settings, changing your login shell.
-autofix_for() {
-    case "$1" in
-        "~/Code")                echo "mkdir -p \"$HOME/Code\"" ;;
-        "~/Desktop/screenshots") echo "mkdir -p \"$HOME/Desktop/screenshots\"" ;;
-        ".hushlogin")            echo "touch \"$HOME/.hushlogin\"" ;;
-        "iTerm2 integration")    echo "curl -fsSL https://iterm2.com/shell_integration/zsh -o \"$HOME/.iterm2_shell_integration.zsh\"" ;;
-        *) echo "" ;;
-    esac
-}
+case "${1:-}" in
+    "") ;;
+    -h|--help) awk 'NR>1 && /^#/ { sub(/^# ?/, ""); print; next } NR>1 { exit }' "$0"; exit 0 ;;
+    *)  printf "unknown flag '%s' — doctor only reports; ./setup.sh fixes\n" "$1"; exit 1 ;;
+esac
 
-add_fix() { # label  command
-    [ -z "$2" ] && return 0
-    case "$FIXES" in *"$2"*) return 0 ;; esac   # same command already queued
-    FIXES="$FIXES$1	$2
-"
-}
-
-# record a problem: list  label  what-it-means  how-to-fix
-remember() {
-    local entry
-    entry="$(printf '    %s·%s %s\n        %s%s%s\n        %sFix: %s%s\n' \
-        "$BOLD" "$RESET" "$2" "$DIM" "$3" "$RESET" "$DIM" "$4" "$RESET")"
-    # NB: $( ) strips trailing newlines, so add the blank line back here
-    if [ "$1" = needs ]; then
-        add_fix "$2" "${5:-$(autofix_for "$2")}"
-        NEEDS="$NEEDS$entry
-"; NEEDS_N=$((NEEDS_N+1))
-    else
-        IGNORE="$IGNORE$entry
-"; IGNORE_N=$((IGNORE_N+1))
-    fi
-}
-
-# check  LABEL  WHAT-IT-IS  WHAT-FAILURE-MEANS  HOW-TO-FIX  --  command...
-check() {
-    local label="$1" what="$2" why="$3" fix="$4"; shift 5   # drop the --
-    if "$@" >/dev/null 2>&1; then
-        printf "  %s✓%s %-24s %s%s%s\n" "$GREEN" "$RESET" "$label" "$DIM" "$what" "$RESET"
-        PASS=$((PASS+1))
-    else
-        printf "  %s✗%s %-24s %s%s%s\n" "$RED" "$RESET" "$label" "$DIM" "$what" "$RESET"
-        remember needs "$label" "$why" "$fix"
-    fi
-}
-
-# same, but a failure here is normal and safe to ignore
-soft() {
-    local label="$1" what="$2" why="$3" fix="$4"; shift 5
-    if "$@" >/dev/null 2>&1; then
-        printf "  %s✓%s %-24s %s%s%s\n" "$GREEN" "$RESET" "$label" "$DIM" "$what" "$RESET"
-        PASS=$((PASS+1))
-    else
-        printf "  %s~%s %-24s %s%s%s\n" "$YELLOW" "$RESET" "$label" "$DIM" "$what" "$RESET"
-        remember ignore "$label" "$why" "$fix"
-    fi
-}
-
-linked() { [ -L "$1" ]; }
-
-check_link() { # LABEL  WHAT-IT-IS  PATH
-    local short="${3/#$HOME/~}"
-    if [ -L "$3" ]; then
-        printf "  %s✓%s %-24s %s%s%s\n" "$GREEN" "$RESET" "$1" "$DIM" "$2" "$RESET"
-        PASS=$((PASS+1))
-    elif [ -e "$3" ]; then
-        printf "  %s✗%s %-24s %s%s%s\n" "$RED" "$RESET" "$1" "$DIM" "$2" "$RESET"
-        remember needs "$1" \
-            "There is a real file at $short, so your edits there are not saved in this repo." \
-            "Move it aside and run ./install.sh to replace it with a link." \
-            "bash \"$SCRIPT_DIR/install.sh\""
-    else
-        printf "  %s✗%s %-24s %s%s%s\n" "$RED" "$RESET" "$1" "$DIM" "$2" "$RESET"
-        remember needs "$1" \
-            "$short does not exist, so this config is not being used at all." \
-            "Run ./install.sh" \
-            "bash \"$SCRIPT_DIR/install.sh\""
-    fi
-}
-
-# psql ships keg-only, so being absent from PATH is expected, not broken
-has_psql() { command -v psql >/dev/null 2>&1 || ls /opt/homebrew/opt/postgresql@*/bin/psql >/dev/null 2>&1; }
-
-banner "Health Check" "$([ "$OS" = Darwin ] && echo macOS || echo Linux) · nothing here changes your machine"
-
-printf "\n%sThe programs your shell and editor expect to find%s\n" "$BOLD" "$RESET"
-NOT_FOUND="It is not installed, or not on your PATH."
-REINSTALL="Run ./setup.sh and let the Packages step finish."
-[ "$OS" = Darwin ] && \
-check "brew"     "installs everything else"     "$NOT_FOUND" "See https://brew.sh" -- command -v brew
-check "git"      "version control"              "$NOT_FOUND" "$REINSTALL" -- command -v git
-check "node"     "runs JavaScript"              "$NOT_FOUND" "$REINSTALL" -- command -v node
-check "python3"  "runs Python"                  "$NOT_FOUND" "$REINSTALL" -- command -v python3
-check "go"       "runs Go"                      "$NOT_FOUND" "$REINSTALL" -- command -v go
-check "gh"       "GitHub from the terminal"     "$NOT_FOUND" "$REINSTALL" -- command -v gh
-check "fzf"      "fuzzy finder behind ctrl-r"   "$NOT_FOUND" "$REINSTALL" -- command -v fzf
-check "fd"       "friendlier find"              "$NOT_FOUND" "$REINSTALL" -- command -v fd
-check "rg"       "fast search (ripgrep)"        "$NOT_FOUND" "$REINSTALL" -- command -v rg
-check "jq"       "reads JSON"                   "$NOT_FOUND" "$REINSTALL" -- command -v jq
-check "zoxide"   "smarter cd"                   "$NOT_FOUND" "$REINSTALL" -- command -v zoxide
-check "atuin"    "searchable shell history"     "$NOT_FOUND" "$REINSTALL" -- command -v atuin
-check "mise"     "manages language versions"    "$NOT_FOUND" "$REINSTALL" -- command -v mise
-check "tofu"     "OpenTofu, builds infra"       "$NOT_FOUND" "$REINSTALL" -- command -v tofu
-check "rclone"   "syncs cloud storage"          "$NOT_FOUND" "$REINSTALL" -- command -v rclone
-check "nvim"     "Neovim, your editor"          "$NOT_FOUND" "$REINSTALL" -- command -v nvim
-check "wget"     "downloads files"              "$NOT_FOUND" "$REINSTALL" -- command -v wget
-check "code"     "VS Code from the terminal"    "VS Code is installed but its 'code' command is not on your PATH." \
-                 "In VS Code: Cmd+Shift+P, then 'Shell Command: Install code command in PATH'." -- command -v code
-check "docx2txt" "reads Word documents"         "$NOT_FOUND" "$REINSTALL" -- command -v docx2txt.pl
-soft  "psql"     "PostgreSQL client"            "Postgres is installed, but Homebrew keeps this version off your PATH on purpose so it cannot clash with another Postgres." \
-                 "Nothing to do. To use it anyway: /opt/homebrew/opt/postgresql@18/bin/psql" -- has_psql
-
-printf "\n%sYour config files, linked back to this repo%s\n" "$BOLD" "$RESET"
-printf "  %sEditing any of these edits the repo, which is the point.%s\n" "$DIM" "$RESET"
-check_link ".zshrc"            "your shell setup"            "$HOME/.zshrc"
-check_link ".gitconfig"        "your git identity"           "$HOME/.gitconfig"
-check_link ".gitignore_global" "files git always ignores"    "$HOME/.gitignore_global"
-check_link ".gitconfig.local"  "the Mac/Linux-specific bits" "$HOME/.gitconfig.local"
-check_link "ssh config"        "how ssh finds your keys"     "$HOME/.ssh/config"
-check_link "atuin config"      "shell history settings"      "$HOME/.config/atuin/config.toml"
-check_link "gh config"         "GitHub CLI settings"         "$HOME/.config/gh/config.yml"
-check_link "nvim init.lua"     "Neovim entry point"          "$HOME/.config/nvim/init.lua"
-check_link "nvim lazyvim.json" "which LazyVim extras load"   "$HOME/.config/nvim/lazyvim.json"
-check_link "nvim lazy.lua"     "how plugins are loaded"      "$HOME/.config/nvim/lua/config/lazy.lua"
-check_link "nvim claude.lua"   "Claude Code inside Neovim"   "$HOME/.config/nvim/lua/plugins/claude.lua"
-
-printf "\n%sFolders this setup expects%s\n" "$BOLD" "$RESET"
-check "~/Code"                "where your projects live"  "The folder is missing." "Run ./setup.sh, or: mkdir -p ~/Code" -- test -d "$HOME/Code"
-check "~/Desktop/screenshots" "where screenshots are saved" "The folder is missing, so screenshots have nowhere to go." \
-      "Run ./setup.sh, or: mkdir -p ~/Desktop/screenshots" -- test -d "$HOME/Desktop/screenshots"
-
-printf "\n%sGit and commit signing%s\n" "$BOLD" "$RESET"
-check "default branch = main" "new repos start on main" "Your git is still creating repos with the old default branch name." \
-      "git config --file git/.gitconfig init.defaultBranch main" -- test "$(git config init.defaultBranch)" = "main"
-check "signing is on"         "commits are signed"      "Your commits will not be marked verified on GitHub." \
-      "Set commit.gpgsign to true in git/.gitconfig" -- test "$(git config commit.gpgsign)" = "true"
-check "signing key is set"    "which key signs them"    "No signing key is configured, so signed commits will fail." \
-      "Point user.signingkey at your public key, then add it to GitHub as a signing key." \
-      -- test -n "$(git config user.signingkey)"
-
-printf "\n%sMac extras%s\n" "$BOLD" "$RESET"
-if [ "$OS" = Darwin ]; then
-    check "1Password SSH agent" "holds your ssh keys"    "1Password is not serving your SSH keys, so git push and ssh will not authenticate." \
-          "Open 1Password > Settings > Developer and turn on 'Use the SSH agent'." \
-          -- test -S "$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
-    soft  ".hushlogin"          "hides the login banner" "Only cosmetic — you will see the 'Last login' line in new terminals." \
-          "touch ~/.hushlogin" -- test -f "$HOME/.hushlogin"
-    check "iTerm2 integration"  "shell integration script" "iTerm2's extras (marks, command history) will not work." \
-          "Run ./setup.sh, or re-run just that step." -- test -f "$HOME/.iterm2_shell_integration.zsh"
-    check_link "iTerm2 profile" "your terminal's look" "$HOME/Library/Application Support/iTerm2/DynamicProfiles/Default.json"
+if [ -t 1 ] && command -v tput >/dev/null 2>&1; then
+    BOLD="$(tput bold)"; DIM="$(tput dim)"; RED="$(tput setaf 1)"
+    GREEN="$(tput setaf 2)"; YELLOW="$(tput setaf 3)"; RESET="$(tput sgr0)"
 else
-    check "1Password SSH agent" "holds your ssh keys" "1Password is not serving your SSH keys." \
-          "Enable the SSH agent in 1Password's Developer settings." -- test -S "$HOME/.1password/agent.sock"
-    check "zsh is your shell"   "the shell this repo configures" "You are still on another shell, so ~/.zshrc is not being read." \
-          "chsh -s \$(command -v zsh), then log out and back in." -- test "$(basename "$SHELL")" = "zsh"
+    BOLD=""; DIM=""; RED=""; GREEN=""; YELLOW=""; RESET=""
 fi
 
-# ─── Summary ────────────────────────────────────────────────────────────
-TOTAL=$(( PASS + NEEDS_N + IGNORE_N ))
-printf "\n"; rule
-if [ "$NEEDS_N" -eq 0 ] && [ "$IGNORE_N" -eq 0 ]; then
+PASS=0; NEEDS_N=0; SOFT_N=0; NEEDS=""; SOFTS=""
+
+detail() { # label why fix
+    printf '    %s·%s %s\n        %s%s%s\n        %sFix: %s%s\n' \
+        "$BOLD" "$RESET" "$1" "$DIM" "$2" "$RESET" "$DIM" "$3" "$RESET"
+}
+pass_line() { printf "  %s✓%s %s\n" "$GREEN" "$RESET" "$1"; PASS=$((PASS+1)); }
+fail_line() { # label why fix
+    printf "  %s✗%s %s\n" "$RED" "$RESET" "$1"
+    NEEDS="$NEEDS$(detail "$1" "$2" "$3")
+"; NEEDS_N=$((NEEDS_N+1))
+}
+check() { local label="$1" why="$2" fix="$3"; shift 4
+    if "$@" >/dev/null 2>&1; then pass_line "$label"; else fail_line "$label" "$why" "$fix"; fi
+}
+soft() { local label="$1" why="$2" fix="$3"; shift 4
+    if "$@" >/dev/null 2>&1; then pass_line "$label"; return; fi
+    printf "  %s~%s %s\n" "$YELLOW" "$RESET" "$label"
+    SOFTS="$SOFTS$(detail "$label" "$why" "$fix")
+"; SOFT_N=$((SOFT_N+1))
+}
+
+check_bundle() { # label  brewfile — a failure names exactly what is missing
+    local label="$1" file="$2" out missing
+    # NO_UPGRADE: report only what is missing, not what is merely outdated
+    if out="$(HOMEBREW_BUNDLE_NO_UPGRADE=1 brew bundle check --verbose --file="$file" 2>&1)"; then
+        pass_line "$label"; return 0
+    fi
+    missing="$(printf '%s\n' "$out" \
+        | sed -n 's/^→ \(.*\) needs to be.*$/\1/p' \
+        | sed 's/^Formula /brew /; s/^Cask /cask /; s/^App /mas /' \
+        | awk 'NR>1 { printf ", " } { printf "%s", $0 } END { print "" }')"
+    [ -z "$missing" ] && missing="brew bundle check failed: $(printf '%s' "$out" | head -1)"
+    fail_line "$label" "Not installed here: $missing" "Run ./setup.sh — brew bundle installs what is missing."
+}
+
+PROFILE=""
+[ -f "$HOME/.config/dotfiles/profile" ] && PROFILE="$(cat "$HOME/.config/dotfiles/profile")"
+
+# ── Packages ────────────────────────────────────────────────────────────
+# Checked straight against the Brewfiles: add a package there, it is
+# checked here automatically.
+printf "\n%sPackages%s\n" "$BOLD" "$RESET"
+if [ "$OS" = Darwin ]; then
+    check "Homebrew" "brew is not installed, so nothing else can be." \
+        "See https://brew.sh, or run ./setup.sh" -- command -v brew
+    check "profile recorded" "sync.sh and doctor.sh cannot know which Brewfile.<name> this machine uses." \
+        "Run ./setup.sh <profile> once." -- test -n "$PROFILE"
+    if command -v brew >/dev/null 2>&1; then
+        check_bundle "core packages (Brewfile)" "$SCRIPT_DIR/Brewfile"
+        [ -n "$PROFILE" ] && check_bundle "$PROFILE packages (Brewfile.$PROFILE)" "$SCRIPT_DIR/Brewfile.$PROFILE"
+    fi
+fi
+check_mise() { # runtimes come from config/mise/config.toml — nothing to edit here
+    command -v mise >/dev/null 2>&1 || { fail_line "runtimes (mise)" "mise is not installed, so no language runtimes are managed." "Run ./setup.sh"; return 0; }
+    local missing
+    missing="$(mise ls --missing 2>/dev/null | awk 'NR>1 { printf ", " } { printf "%s %s", $1, $2 } END { if (NR) print "" }')"
+    if [ -z "$missing" ]; then pass_line "runtimes (mise)"; else
+        fail_line "runtimes (mise)" "Not installed here: $missing" "Run ./setup.sh — it runs 'mise install'."
+    fi
+}
+check_mise
+check "code on PATH" "VS Code's terminal command is missing, so extensions cannot be installed or synced." \
+    "In VS Code: Cmd+Shift+P, then 'Shell Command: Install code command in PATH'." -- command -v code
+
+# ── Symlinks ────────────────────────────────────────────────────────────
+# The list comes from `install.sh --list` — nothing to maintain here.
+printf "\n%sConfig symlinks%s  %s(editing these edits the repo — that is the point)%s\n" "$BOLD" "$RESET" "$DIM" "$RESET"
+while IFS="$TAB" read -r src dst; do
+    short="${dst/#$HOME/~}"
+    if [ -L "$dst" ]; then
+        pass_line "$short"
+    elif [ -e "$dst" ]; then
+        fail_line "$short" "A real file sits there, so edits to it are not tracked in this repo." \
+            "Run ./install.sh — it backs the file up and links the repo copy."
+    else
+        fail_line "$short" "Nothing is there, so this config is not in use at all." \
+            "Run ./install.sh"
+    fi
+done < <(bash "$SCRIPT_DIR/install.sh" --list)
+
+# ── Folders ─────────────────────────────────────────────────────────────
+printf "\n%sFolders%s\n" "$BOLD" "$RESET"
+check "~/Code" "The projects folder is missing." "Run ./setup.sh, or: mkdir -p ~/Code" -- test -d "$HOME/Code"
+check "~/Desktop/screenshots" "Screenshots have nowhere to go." \
+    "Run ./setup.sh, or: mkdir -p ~/Desktop/screenshots" -- test -d "$HOME/Desktop/screenshots"
+
+# ── Git ─────────────────────────────────────────────────────────────────
+printf "\n%sGit and commit signing%s\n" "$BOLD" "$RESET"
+check "default branch = main" "New repos would still start on the old default branch name." \
+    "git config --file git/.gitconfig init.defaultBranch main" -- test "$(git config init.defaultBranch)" = "main"
+check "signing is on" "Commits will not be marked verified on GitHub." \
+    "Set commit.gpgsign to true in git/.gitconfig" -- test "$(git config commit.gpgsign)" = "true"
+check "signing key is set" "No signing key is configured, so signed commits will fail." \
+    "Point user.signingkey at your public key, then add it to GitHub as a signing key." \
+    -- test -n "$(git config user.signingkey)"
+
+# ── Platform extras ─────────────────────────────────────────────────────
+printf "\n%s%s extras%s\n" "$BOLD" "$([ "$OS" = Darwin ] && echo Mac || echo Linux)" "$RESET"
+if [ "$OS" = Darwin ]; then
+    check "1Password SSH agent" "1Password is not serving your SSH keys, so git push and ssh will not authenticate." \
+        "Open 1Password > Settings > Developer and turn on 'Use the SSH agent'." \
+        -- test -S "$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+    check "iTerm2 integration" "iTerm2's extras (marks, command history) will not work." \
+        "Run ./setup.sh" -- test -f "$HOME/.iterm2_shell_integration.zsh"
+    soft ".hushlogin" "Only cosmetic — new terminals show the 'Last login' line." \
+        "touch ~/.hushlogin" -- test -f "$HOME/.hushlogin"
+else
+    check "1Password SSH agent" "1Password is not serving your SSH keys." \
+        "Enable the SSH agent in 1Password's Developer settings." -- test -S "$HOME/.1password/agent.sock"
+    check "zsh is your shell" "You are on another shell, so ~/.zshrc is not being read." \
+        "chsh -s \$(command -v zsh), then log out and back in." -- test "$(basename "$SHELL")" = "zsh"
+fi
+
+# ── Summary ─────────────────────────────────────────────────────────────
+TOTAL=$((PASS + NEEDS_N + SOFT_N))
+printf "\n"
+if [ "$NEEDS_N" -eq 0 ] && [ "$SOFT_N" -eq 0 ]; then
     printf "  %s%s✓ All %d checks passed. Nothing to do.%s\n" "$BOLD" "$GREEN" "$TOTAL" "$RESET"
 elif [ "$NEEDS_N" -eq 0 ]; then
     printf "  %s%s✓ Everything important is fine.%s  %s(%d of %d passed)%s\n" \
-           "$BOLD" "$GREEN" "$RESET" "$DIM" "$PASS" "$TOTAL" "$RESET"
+        "$BOLD" "$GREEN" "$RESET" "$DIM" "$PASS" "$TOTAL" "$RESET"
 else
     printf "  %s%d of %d checks passed.%s\n" "$BOLD" "$PASS" "$TOTAL" "$RESET"
 fi
-rule
-
 if [ "$NEEDS_N" -gt 0 ]; then
-    printf "\n  %s%sWorth fixing (%d)%s\n\n" "$BOLD" "$YELLOW" "$NEEDS_N" "$RESET"
-    printf "%s" "$NEEDS"
+    printf "\n  %s%sWorth fixing (%d)%s\n\n%s" "$BOLD" "$YELLOW" "$NEEDS_N" "$RESET" "$NEEDS"
 fi
-if [ "$IGNORE_N" -gt 0 ]; then
-    printf "\n  %s%sSafe to ignore (%d)%s\n\n" "$BOLD" "$DIM" "$IGNORE_N" "$RESET"
-    printf "%s" "$IGNORE"
-fi
-
-# ─── Offer to fix ───────────────────────────────────────────────────────
-N_FIX=$(printf '%s' "$FIXES" | grep -c . 2>/dev/null)
-[ -z "$N_FIX" ] && N_FIX=0
-
-if [ "$NEEDS_N" -gt 0 ] && [ "$N_FIX" -gt 0 ] && [ "$OFFER_FIX" = true ]; then
-    printf "\n"; rule
-    if [ "$N_FIX" -eq "$NEEDS_N" ]; then
-        printf "  I can fix %sall %d%s of these for you:\n\n" "$BOLD" "$N_FIX" "$RESET"
-    else
-        printf "  I can fix %s%d of the %d%s for you; the rest need you:\n\n" "$BOLD" "$N_FIX" "$NEEDS_N" "$RESET"
-    fi
-    printf '%s' "$FIXES" | while IFS="$(printf '\t')" read -r lbl cmd; do
-        [ -n "$lbl" ] && printf "      %s·%s %-22s %s%s%s\n" "$BOLD" "$RESET" "$lbl" "$DIM" "$cmd" "$RESET"
-    done
-    printf "\n"
-
-    DO_IT=false
-    if [ "$AUTO_FIX" = true ]; then
-        DO_IT=true
-    elif [ "$INTERACTIVE" = true ]; then
-        ask_yn "Run these now?" Y && DO_IT=true
-    else
-        info "run ./doctor.sh --fix to apply them"
-    fi
-
-    if [ "$DO_IT" = true ]; then
-        n=0; failed=0
-        total=$N_FIX
-        printf '%s' "$FIXES" > "${TMPDIR:-/tmp}/doctor-fixes.$$"
-        while IFS="$(printf '\t')" read -r lbl cmd; do
-            [ -z "$lbl" ] && continue
-            n=$((n+1))
-            step_header "$n" "$total" "$lbl"
-            if eval "$cmd" >/dev/null 2>&1; then ok "done"; else bad "failed: $cmd"; failed=$((failed+1)); fi
-            progress "$n" "$total"
-        done < "${TMPDIR:-/tmp}/doctor-fixes.$$"
-        rm -f "${TMPDIR:-/tmp}/doctor-fixes.$$"
-
-        printf "\n"
-        if [ "$RECHECK" = true ]; then
-            [ "$failed" -eq 0 ] && ok "Fixes applied." || warn "$failed fix(es) failed."
-        else
-            info "re-checking…"
-            DOCTOR_RECHECK=true exec bash "$SCRIPT_DIR/doctor.sh" --no-fix
-        fi
-    fi
+if [ "$SOFT_N" -gt 0 ]; then
+    printf "\n  %s%sSafe to ignore (%d)%s\n\n%s" "$BOLD" "$DIM" "$SOFT_N" "$RESET" "$SOFTS"
 fi
 printf "\n"
+[ "$NEEDS_N" -eq 0 ]
