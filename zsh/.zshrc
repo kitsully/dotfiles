@@ -20,13 +20,16 @@ autoload -Uz vcs_info
 setopt PROMPT_SUBST
 
 zstyle ':vcs_info:*' enable git
-zstyle ':vcs_info:git:*' check-for-changes true
-zstyle ':vcs_info:git:*' unstagedstr   ' %F{yellow}!'
-zstyle ':vcs_info:git:*' stagedstr     ' %F{green}+'
-zstyle ':vcs_info:git:*' formats       ' %F{blue}git:(%F{red}%b%F{blue})%f%u%c'
-zstyle ':vcs_info:git:*' actionformats ' %F{blue}git:(%F{red}%b|%a%F{blue})%f%u%c'
+zstyle ':vcs_info:git:*' formats       ' %F{blue}git:(%F{red}%b%F{blue})%f'
+zstyle ':vcs_info:git:*' actionformats ' %F{blue}git:(%F{red}%b|%a%F{blue})%f'
 
-precmd() { vcs_info }
+precmd() {
+  vcs_info
+  # single dirty flag: staged, unstaged, or untracked all count
+  if [[ -n $vcs_info_msg_0_ && -n $(git status --porcelain 2>/dev/null) ]]; then
+    vcs_info_msg_0_+=' %F{yellow}✗%f'
+  fi
+}
 
 PROMPT='%B%(?.%F{green}.%F{red})➜%f%b %B%F{cyan}%c%f%b${vcs_info_msg_0_} '
 
