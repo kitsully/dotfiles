@@ -87,11 +87,16 @@ if [ "$OS" = Darwin ]; then
 fi
 check_mise() { # runtimes come from config/mise/config.toml — nothing to edit here
     command -v mise >/dev/null 2>&1 || { fail_line "runtimes (mise)" "mise is not installed, so no language runtimes are managed." "Run ./setup.sh"; return 0; }
-    local missing
-    missing="$(mise ls --missing 2>/dev/null | awk 'NR>1 { printf ", " } { printf "%s %s", $1, $2 } END { if (NR) print "" }')"
-    if [ -z "$missing" ]; then pass_line "runtimes (mise)"; else
-        fail_line "runtimes (mise)" "Not installed here: $missing" "Run ./setup.sh — it runs 'mise install'."
+    local out missing
+    # stderr stays out of the list: mise prints harmless warnings there
+    if ! out="$(mise ls --missing 2>/dev/null)"; then
+        fail_line "runtimes (mise)" "mise itself errored: $(mise ls --missing 2>&1 >/dev/null | head -1)" \
+            "Fix mise first (brew reinstall mise), then re-run ./setup.sh."
+        return 0
     fi
+    if [ -z "$out" ]; then pass_line "runtimes (mise)"; return 0; fi
+    missing="$(printf '%s\n' "$out" | awk 'NR>1 { printf ", " } { printf "%s %s", $1, $2 }')"
+    fail_line "runtimes (mise)" "Not installed here: $missing" "Run ./setup.sh — it runs 'mise install'."
 }
 check_mise
 check "code on PATH" "VS Code's terminal command is missing, so extensions cannot be installed or synced." \

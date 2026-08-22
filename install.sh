@@ -12,6 +12,8 @@
 # doctor.sh uses it, so the link list lives only here.
 
 set -euo pipefail
+set -o errtrace   # the ERR trap must fire inside link() too
+trap 'echo "install.sh stopped on an error — fix the cause above and re-run; links already made are fine." >&2' ERR
 
 DOTFILES="$(cd "$(dirname "$0")" && pwd)"
 OS="$(uname)"

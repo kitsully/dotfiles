@@ -45,9 +45,16 @@ esac
 
 PROFILE=""
 [ -f "$HOME/.config/dotfiles/profile" ] && PROFILE="$(cat "$HOME/.config/dotfiles/profile")"
-if [ "$(uname)" = Darwin ] && [ -z "$PROFILE" ]; then
-    printf "No profile is recorded on this machine — run ./setup.sh <profile> once first.\n"
-    exit 1
+if [ "$(uname)" = Darwin ]; then
+    if [ -z "$PROFILE" ]; then
+        printf "No profile is recorded on this machine — run ./setup.sh <profile> once first.\n"
+        exit 1
+    fi
+    # a stale or mistyped profile would make every package look like drift
+    if [ ! -f "$SCRIPT_DIR/Brewfile.$PROFILE" ]; then
+        printf "Recorded profile is '%s' but there is no Brewfile.%s in this repo.\nRe-run ./setup.sh <profile> to record a valid one.\n" "$PROFILE" "$PROFILE"
+        exit 1
+    fi
 fi
 
 TMP="${TMPDIR:-/tmp}/dotfiles-sync.$$"
@@ -153,6 +160,10 @@ json.dump({"Profiles": [norm]}, open(sys.argv[3], "w"), indent=2, sort_keys=True
 print("SAME" if repo == [norm] else "DIFF")
 PYEOF
 )"
+    if [ -z "$verdict" ]; then
+        warn "iterm2: comparison failed (python error above) — skipping"
+        return 0
+    fi
     if [ "$verdict" != DIFF ]; then ok "iterm2: in sync"; return 0; fi
     printf "%siterm2: profile changed%s\n" "$BOLD" "$RESET"
     [ "$DRY_RUN" = true ] && return 0

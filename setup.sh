@@ -195,6 +195,7 @@ fi
 printf "\n"
 if [ -n "$FAILED" ]; then
     printf "%s%s✗ Failed:%s %s\n" "$BOLD" "$RED" "$RESET" "${FAILED%, }"
+    info "each error is printed above, at the end of its '▸ <step>' section"
     info "fix the cause and re-run ./setup.sh — finished steps repeat harmlessly"
     exit 1
 fi
