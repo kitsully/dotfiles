@@ -120,16 +120,36 @@ fi
 
 if [ -f "$PLIST" ] && command -v plutil >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1 \
    && plutil -extract "New Bookmarks" json -o "$TMP/iterm_live.json" "$PLIST" 2>/dev/null; then
-    VERDICT="$(python3 - "$TMP/iterm_live.json" "$ITERM_FILE" "$TMP/iterm_new.json" <<'PYEOF'
-import json, sys
+    VERDICT="$(DEFAULT_GUID="$(defaults read com.googlecode.iterm2 'Default Bookmark Guid' 2>/dev/null)" \
+        python3 - "$TMP/iterm_live.json" "$ITERM_FILE" "$TMP/iterm_new.json" <<'PYEOF'
+import json, os, sys
+
+# The repo copy is an iTerm2 *dynamic* profile, so it must not reuse the Guid of
+# a real profile — iTerm2 refuses to load it and logs a conflict. Keep a stable
+# id and name of our own, and only track the settings.
+DYN_GUID = "dotfiles-iterm2-default"
+DYN_NAME = "Dotfiles"
+
 live = json.load(open(sys.argv[1]))
+want = os.environ.get("DEFAULT_GUID", "")
+chosen = next((p for p in live if p.get("Guid") == want), live[0] if live else None)
+
+if chosen is None:
+    print("SAME")
+    sys.exit()
+
+norm = dict(chosen)
+norm["Guid"] = DYN_GUID
+norm["Name"] = DYN_NAME
+
 try:
     repo = json.load(open(sys.argv[2])).get("Profiles", [])
 except Exception:
     repo = []
-json.dump({"Profiles": live}, open(sys.argv[3], "w"), indent=2, sort_keys=True)
+
+json.dump({"Profiles": [norm]}, open(sys.argv[3], "w"), indent=2, sort_keys=True)
 # compare semantically: plutil emits ints where the repo copy has floats
-print("SAME" if live == repo else "DIFF")
+print("SAME" if repo == [norm] else "DIFF")
 PYEOF
 )"
     [ "$VERDICT" = DIFF ] && { ITERM_DRIFT=yes; ITERM_DETAIL="profile changed"; }
@@ -233,7 +253,9 @@ for t in $SELECTED; do
             code --list-extensions 2>/dev/null | sort > "$EXT_FILE"
             ok "rewrote vscode/extensions.txt" ;;
         iterm2)
-            cp "$TMP/iterm_new.json" "$ITERM_FILE"
+            # write atomically: iTerm2 watches this file and would read a
+            # half-written copy as invalid JSON
+            cp "$TMP/iterm_new.json" "$ITERM_FILE.tmp" && mv -f "$ITERM_FILE.tmp" "$ITERM_FILE"
             ok "rewrote iterm2/Default.json" ;;
     esac
     progress "$IDX" "$TOTAL"

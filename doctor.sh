@@ -12,12 +12,51 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 COLS=66
 . "$SCRIPT_DIR/lib/ui.sh"
 
+OFFER_FIX=true
+AUTO_FIX=false
+RECHECK="${DOCTOR_RECHECK:-false}"
+
+for arg in "$@"; do
+    case "$arg" in
+        --fix)     AUTO_FIX=true ;;
+        --no-fix)  OFFER_FIX=false ;;
+        -h|--help)
+            printf "%sHealth Check%s\n\n  ./doctor.sh           report, then offer to fix what it can\n  ./doctor.sh --fix     fix without asking\n  ./doctor.sh --no-fix  just report\n\n" "$BOLD" "$RESET"
+            exit 0 ;;
+        *) printf "%sError:%s unknown flag '%s'\n" "$RED" "$RESET" "$arg"; exit 1 ;;
+    esac
+done
+
+INTERACTIVE=true
+{ [ ! -t 0 ] || [ ! -t 1 ]; } && INTERACTIVE=false
+
 OS="$(uname)"
 PASS=0
 NEEDS_N=0
 IGNORE_N=0
 NEEDS=""
 IGNORE=""
+FIXES=""      # label<TAB>command, one per line
+
+# Which problems this script is willing to fix by itself. Anything not
+# listed here needs a person: installing packages, clicking through
+# 1Password's settings, changing your login shell.
+autofix_for() {
+    case "$1" in
+        "~/Code")                echo "mkdir -p \"$HOME/Code\"" ;;
+        "~/Desktop/screenshots") echo "mkdir -p \"$HOME/Desktop/screenshots\"" ;;
+        ".hushlogin")            echo "touch \"$HOME/.hushlogin\"" ;;
+        "iTerm2 integration")    echo "curl -fsSL https://iterm2.com/shell_integration/zsh -o \"$HOME/.iterm2_shell_integration.zsh\"" ;;
+        *) echo "" ;;
+    esac
+}
+
+add_fix() { # label  command
+    [ -z "$2" ] && return 0
+    case "$FIXES" in *"$2"*) return 0 ;; esac   # same command already queued
+    FIXES="$FIXES$1	$2
+"
+}
 
 # record a problem: list  label  what-it-means  how-to-fix
 remember() {
@@ -26,6 +65,7 @@ remember() {
         "$BOLD" "$RESET" "$2" "$DIM" "$3" "$RESET" "$DIM" "$4" "$RESET")"
     # NB: $( ) strips trailing newlines, so add the blank line back here
     if [ "$1" = needs ]; then
+        add_fix "$2" "${5:-$(autofix_for "$2")}"
         NEEDS="$NEEDS$entry
 "; NEEDS_N=$((NEEDS_N+1))
     else
@@ -69,12 +109,14 @@ check_link() { # LABEL  WHAT-IT-IS  PATH
         printf "  %s✗%s %-24s %s%s%s\n" "$RED" "$RESET" "$1" "$DIM" "$2" "$RESET"
         remember needs "$1" \
             "There is a real file at $short, so your edits there are not saved in this repo." \
-            "Move it aside and run ./install.sh to replace it with a link."
+            "Move it aside and run ./install.sh to replace it with a link." \
+            "bash \"$SCRIPT_DIR/install.sh\""
     else
         printf "  %s✗%s %-24s %s%s%s\n" "$RED" "$RESET" "$1" "$DIM" "$2" "$RESET"
         remember needs "$1" \
             "$short does not exist, so this config is not being used at all." \
-            "Run ./install.sh"
+            "Run ./install.sh" \
+            "bash \"$SCRIPT_DIR/install.sh\""
     fi
 }
 
@@ -175,5 +217,53 @@ fi
 if [ "$IGNORE_N" -gt 0 ]; then
     printf "\n  %s%sSafe to ignore (%d)%s\n\n" "$BOLD" "$DIM" "$IGNORE_N" "$RESET"
     printf "%s" "$IGNORE"
+fi
+
+# ─── Offer to fix ───────────────────────────────────────────────────────
+N_FIX=$(printf '%s' "$FIXES" | grep -c . 2>/dev/null)
+[ -z "$N_FIX" ] && N_FIX=0
+
+if [ "$NEEDS_N" -gt 0 ] && [ "$N_FIX" -gt 0 ] && [ "$OFFER_FIX" = true ]; then
+    printf "\n"; rule
+    if [ "$N_FIX" -eq "$NEEDS_N" ]; then
+        printf "  I can fix %sall %d%s of these for you:\n\n" "$BOLD" "$N_FIX" "$RESET"
+    else
+        printf "  I can fix %s%d of the %d%s for you; the rest need you:\n\n" "$BOLD" "$N_FIX" "$NEEDS_N" "$RESET"
+    fi
+    printf '%s' "$FIXES" | while IFS="$(printf '\t')" read -r lbl cmd; do
+        [ -n "$lbl" ] && printf "      %s·%s %-22s %s%s%s\n" "$BOLD" "$RESET" "$lbl" "$DIM" "$cmd" "$RESET"
+    done
+    printf "\n"
+
+    DO_IT=false
+    if [ "$AUTO_FIX" = true ]; then
+        DO_IT=true
+    elif [ "$INTERACTIVE" = true ]; then
+        ask_yn "Run these now?" Y && DO_IT=true
+    else
+        info "run ./doctor.sh --fix to apply them"
+    fi
+
+    if [ "$DO_IT" = true ]; then
+        n=0; failed=0
+        total=$N_FIX
+        printf '%s' "$FIXES" > "${TMPDIR:-/tmp}/doctor-fixes.$$"
+        while IFS="$(printf '\t')" read -r lbl cmd; do
+            [ -z "$lbl" ] && continue
+            n=$((n+1))
+            step_header "$n" "$total" "$lbl"
+            if eval "$cmd" >/dev/null 2>&1; then ok "done"; else bad "failed: $cmd"; failed=$((failed+1)); fi
+            progress "$n" "$total"
+        done < "${TMPDIR:-/tmp}/doctor-fixes.$$"
+        rm -f "${TMPDIR:-/tmp}/doctor-fixes.$$"
+
+        printf "\n"
+        if [ "$RECHECK" = true ]; then
+            [ "$failed" -eq 0 ] && ok "Fixes applied." || warn "$failed fix(es) failed."
+        else
+            info "re-checking…"
+            DOCTOR_RECHECK=true exec bash "$SCRIPT_DIR/doctor.sh" --no-fix
+        fi
+    fi
 fi
 printf "\n"

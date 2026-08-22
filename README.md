@@ -294,7 +294,7 @@ To verify everything is in order:
 | `config/nvim/` | Neovim config — LazyVim with Claude Code integration; `lazy-lock.json` pins plugin versions so every machine gets the same set |
 | `config/gh/config.yml` | GitHub CLI settings and aliases |
 | `vscode/extensions.txt` | VS Code extension list (installed by setup.sh) |
-| `iterm2/Default.json` | iTerm2 profile (loaded via DynamicProfiles on macOS) |
+| `iterm2/Default.json` | iTerm2 profile, loaded via DynamicProfiles. It appears in iTerm2 as **Dotfiles**, with its own Guid — a dynamic profile must not reuse the Guid of a normal profile, or iTerm2 refuses to load it |
 
 ## Linux Distro Support
 
