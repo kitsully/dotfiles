@@ -146,7 +146,11 @@ cleanup_askpass() {
     rm -rf "$ASKPASS_DIR"
     ASKPASS_DIR=""
 }
-if [ "$PLATFORM" = mac ] && [ "$DRY_RUN" = false ] && [ -t 0 ]; then
+# gated on /dev/tty, not stdin: with stdin redirected (a provisioning
+# wrapper, `... | bash`) sudo would still prompt on /dev/tty later, so the
+# password must be asked there too — skipping would just defer the prompts
+# to the worst possible moment, buried in installer output
+if [ "$PLATFORM" = mac ] && [ "$DRY_RUN" = false ] && sh -c ': </dev/tty' 2>/dev/null; then
     # a plain `trap cleanup INT` would swallow Ctrl+C: bash runs the handler
     # and then RESUMES the script, so a signal must clean up and re-raise
     # itself, or the run continues with the password file already wiped
@@ -156,8 +160,8 @@ if [ "$PLATFORM" = mac ] && [ "$DRY_RUN" = false ] && [ -t 0 ]; then
     trap 'cleanup_askpass; trap - HUP;  kill -HUP  $$' HUP
     tries=0
     while :; do
-        printf "Password (asked once, then answers the installer prompts for you): "
-        IFS= read -rs PW; printf "\n"
+        printf "Password (asked once, then answers the installer prompts for you): " > /dev/tty
+        IFS= read -rs PW < /dev/tty; printf "\n" > /dev/tty
         # dscl checks the typed password against the account itself. `sudo -v`
         # cannot do this: with Touch ID for sudo enabled (re-runs), a
         # fingerprint tap satisfies it no matter what was typed, and the typo
@@ -178,11 +182,31 @@ if [ "$PLATFORM" = mac ] && [ "$DRY_RUN" = false ] && [ -t 0 ]; then
     printf '#!/bin/sh\nexec cat "%s"\n' "$ASKPASS_DIR/pw" > "$ASKPASS_DIR/askpass"
     chmod 700 "$ASKPASS_DIR/askpass"
     export SUDO_ASKPASS="$ASKPASS_DIR/askpass"
+    # Prove the whole chain once, up front: kill the timestamp, then make
+    # sudo authenticate through the helper — exactly what every pkg-cask
+    # installer will do. If this fails, say so NOW and disarm, instead of
+    # promising silent installs and prompting mid-run. Skipped when Touch ID
+    # for sudo is on: pam_tid would pop a fingerprint dialog here, and on
+    # those machines the dialog covers the installers anyway.
+    if ! grep -q '^auth.*pam_tid' /etc/pam.d/sudo_local 2>/dev/null; then
+        sudo -k
+        if ! sudo -A -v 2>/dev/null; then
+            warn "sudo rejected the stored password via the askpass helper — installer prompts will NOT be answered automatically this run"
+            cleanup_askpass
+            unset SUDO_ASKPASS
+        fi
+    fi
     # -A -v (not -n true): the Homebrew installer and brew's cask pkg
     # installers deliberately wipe sudo's timestamp (`sudo -k`) when they
     # finish, and -n can only refresh a still-valid one. -A re-authenticates
     # through the askpass helper, so the cache heals itself within a tick.
-    ( while kill -0 $$ 2>/dev/null; do sudo -A -v 2>/dev/null; sleep 30; done ) &
+    # (If the self-test disarmed the helper, fall back to -n: it keeps a
+    # still-valid timestamp warm and never prompts from the background.)
+    if [ -n "${SUDO_ASKPASS:-}" ]; then
+        ( while kill -0 $$ 2>/dev/null; do sudo -A -v 2>/dev/null; sleep 30; done ) &
+    else
+        ( while kill -0 $$ 2>/dev/null; do sudo -n -v 2>/dev/null; sleep 30; done ) &
+    fi
 fi
 
 # ── Steps ───────────────────────────────────────────────────────────────
