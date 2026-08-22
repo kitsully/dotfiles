@@ -90,19 +90,19 @@ skips `Brewfile.personal` entirely. What it leaves off, and why:
 
 | Left off | Why |
 |----------|-----|
-| All 21 Mac App Store apps | `mas` installs require a **personal Apple ID signed into the machine**. Most employers prohibit this, and it ties personal purchases to a corporate device. |
-| Setapp, TextExpander, Keyboard Maestro, Hazel, Soulver, BBEdit, Sublime Text, Sublime Merge, Tower, Transmit | Personal licenses and subscriptions that generally do not cover commercial use. |
-| Day One, Evernote, Obsidian, Todoist, Fantastical | Personal notes, journals and calendars — data that should not sync onto a work device. |
+| 19 of the 21 Mac App Store apps | Personal purchases that should not follow you onto a corporate device. Note that Drafts and Amphetamine *are* in core, so a work Mac still needs an Apple ID signed in for `mas` to run. |
+| Setapp, Soulver, BBEdit, Sublime Text, Sublime Merge | Personal licenses and subscriptions that generally do not cover commercial use. |
+| Day One, Evernote, Todoist, Fantastical | Personal notes, journals and calendars — data that should not sync onto a work device. |
 | Steam, Spotify, GarageBand, iMovie, Flighty, CARROT Weather | Non-work software; games in particular tend to violate acceptable-use policies. |
 | Docker Desktop | Requires a **paid business subscription** above a company-size threshold. `Brewfile.work` has commented alternatives (OrbStack, Colima, Podman) — pick whichever your employer licenses. |
-| Microsoft Word / Excel / PowerPoint | Work provisions Office through its own M365 tenant. |
 | ChatGPT, Claude desktop apps | Check your employer's approved-AI-tools policy first, then add to `Brewfile.work` if permitted. |
 | iMazing, SuperDuper | Personal iOS backups and disk cloning; cloning a managed work Mac is usually prohibited. |
-| GitHub Desktop, Microsoft Edge | Redundant with the `gh` CLI and the browsers already in core. |
+| GitHub Desktop | Redundant with the `gh` CLI. |
 
-Everything genuinely needed for development stays in the core `Brewfile`: the
-whole CLI toolchain, fonts, 1Password, iTerm2, VS Code, IntelliJ, Postman,
-Raycast, Zoom, the JDK and the browsers.
+Everything needed on both machines stays in the core `Brewfile`: the whole CLI
+toolchain, fonts, 1Password, iTerm2, VS Code, IntelliJ, Postman, Raycast, Zoom,
+the JDK and the browsers, plus Office, Obsidian, Keyboard Maestro, TextExpander,
+Hazel, Tower, Transmit, Drafts and Amphetamine.
 
 To move an app between profiles, just move its line between `Brewfile`,
 `Brewfile.personal` and `Brewfile.work` — nothing else references them by name.

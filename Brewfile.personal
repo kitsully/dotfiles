@@ -9,7 +9,6 @@
 # === CLI Tools ===
 brew "doctl"                 # personal DigitalOcean account
 brew "heroku"                # personal Heroku account
-brew "mas"                   # Mac App Store CLI — only needed for the mas entries below
 
 # === Cask Apps ===
 cask "airbuddy"              # personal AirPods/device battery HUD
@@ -18,14 +17,7 @@ cask "chatgpt"               # check employer's approved-AI-tools policy before 
 cask "claude"                # check employer's approved-AI-tools policy before adding at work
 cask "docker-desktop"        # paid subscription required for larger orgs — see Brewfile.work
 cask "github"                # redundant with gh CLI
-cask "hazel"                 # personal license; automates personal file trees
 cask "imazing"               # personal iOS device backups
-cask "keyboard-maestro"      # personal license
-cask "microsoft-edge"        # redundant browser
-cask "microsoft-excel"       # work provisions Office via its own M365 tenant
-cask "microsoft-powerpoint"  # work provisions Office via its own M365 tenant
-cask "microsoft-word"        # work provisions Office via its own M365 tenant
-cask "obsidian"              # personal vault sync
 cask "setapp"                # personal subscription
 cask "soulver"               # personal license
 cask "spotify"
@@ -33,20 +25,15 @@ cask "steam"                 # games — usually against corporate acceptable-us
 cask "sublime-merge"         # personal license; redundant git GUI
 cask "sublime-text"          # personal license; redundant editor
 cask "superduper"            # disk cloning — cloning a managed work Mac is usually prohibited
-cask "textexpander"          # personal subscription
-cask "tower"                 # personal license; redundant git GUI
-cask "transmit"              # personal license
 
 # === Mac App Store ===
 # All of these require a personal Apple ID signed into the machine.
 mas "1Blocker", id: 1365531024
 mas "1Password for Safari", id: 1569813296
 mas "AdBlock Pro", id: 1018301773
-mas "Amphetamine", id: 937984704
 mas "CARROT Weather", id: 993487541
 mas "Dark Reader for Safari", id: 1438243180
 mas "Day One", id: 1055511498
-mas "Drafts", id: 1435957248
 mas "Evernote", id: 406056744
 mas "Fantastical", id: 975937182
 mas "Flighty", id: 1358823008
