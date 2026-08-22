@@ -10,6 +10,30 @@ cd ~/dotfiles
 ./setup.sh
 ```
 
+Run with no arguments and it walks you through it: it asks whether this is a
+work or personal machine, prints the plan, waits for you to confirm, then shows
+each step with a progress bar and a summary at the end. Nothing happens until
+you say yes.
+
+```
+  ? Proceed? [Y]es / [c]ustomize / [q]uit
+```
+
+Pick `c` to choose the steps one at a time. To see exactly what would happen
+without touching anything:
+
+```bash
+./setup.sh --dry-run
+```
+
+For an unattended run (CI, or a re-run you have already reviewed), `--yes`
+accepts every default and asks nothing. It also switches to that mode
+automatically when the output is not a terminal.
+
+```bash
+./setup.sh --work --yes
+```
+
 `setup.sh` auto-detects the platform. You can also pass it explicitly:
 
 ```bash
@@ -33,14 +57,26 @@ What it handles per platform:
 
 ### Profiles (macOS)
 
+You are asked which profile to use when you don't pass one:
+
 | Flag | Installs |
 |------|----------|
 | `--personal` | `Brewfile` + `Brewfile.personal` (default) |
 | `--work` | `Brewfile` + `Brewfile.work` |
 
+### Mode Flags
+
+| Flag | Effect |
+|------|--------|
+| `-y`, `--yes` | Answer every prompt with its default; never asks |
+| `-n`, `--dry-run` | Print what each step would do and change nothing |
+| `-h`, `--help` | Usage summary |
+
 ### Skipping Steps
 
-If package installs are failing or you only need part of the setup, pass `--skip-*` flags after the platform:
+The interactive `[c]ustomize` option covers most of this, but the `--skip-*`
+flags do the same thing non-interactively — useful when a run failed partway
+and you want to resume:
 
 ```bash
 # Skip all heavy installs — run symlinks, VS Code, macOS defaults, doctor, etc.
