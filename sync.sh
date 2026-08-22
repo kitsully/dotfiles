@@ -86,7 +86,12 @@ else printf "asks before each write%s\n" "$RESET"; fi
 printf "%s└─%s\n" "$BOLD" "$RESET"
 
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-sync.XXXXXX")" || exit 1
-trap 'rm -rf "$TMP"' EXIT INT TERM
+# INT/TERM must re-raise after cleaning up: a plain `trap cleanup INT` makes
+# bash run the handler and RESUME the script — Ctrl+C at a y/N prompt would
+# read as "no" and the run would carry on with $TMP already deleted
+trap 'rm -rf "$TMP"' EXIT
+trap 'rm -rf "$TMP"; trap - INT;  kill -INT  $$' INT
+trap 'rm -rf "$TMP"; trap - TERM; kill -TERM $$' TERM
 
 # ── Homebrew packages ───────────────────────────────────────────────────
 # Compares what is installed against Brewfile + Brewfile.$PROFILE. New
@@ -164,7 +169,7 @@ sync_iterm2() {
 
     local verdict
     verdict="$(DEFAULT_GUID="$(defaults read com.googlecode.iterm2 'Default Bookmark Guid' 2>/dev/null)" \
-        python3 - "$TMP/iterm.live" "$repo_json" "$TMP/iterm.new" <<'PYEOF'
+        python3 - "$TMP/iterm.live" "$repo_json" "$TMP/iterm.new" "$TMP/iterm.repo" <<'PYEOF'
 import json, os, sys
 
 DYN_GUID = "dotfiles-iterm2-default"
@@ -186,6 +191,9 @@ except Exception:
     repo = []
 
 json.dump({"Profiles": [norm]}, open(sys.argv[3], "w"), indent=2, sort_keys=True)
+# the repo copy re-dumped in the same normalized form, so the shell can show
+# a clean textual diff of exactly what would change
+json.dump({"Profiles": repo}, open(sys.argv[4], "w"), indent=2, sort_keys=True)
 print("SAME" if repo == [norm] else "DIFF")
 PYEOF
 )"
@@ -195,6 +203,10 @@ PYEOF
     fi
     if [ "$verdict" != DIFF ]; then ok "iterm2: in sync"; return 0; fi
     printf "%siterm2: profile changed%s\n" "$BOLD" "$RESET"
+    # show the actual change before asking: the live profile can hold things
+    # typed into iTerm2 that must not land in a public repo unseen — Initial
+    # Text ssh commands, badges, send-text key bindings
+    diff -u "$TMP/iterm.repo" "$TMP/iterm.new" 2>/dev/null | tail -n +3 | sed 's/^/      /'
     [ "$DRY_RUN" = true ] && return 0
     confirm "rewrite iterm2/Default.json" || return 0
     # write atomically: iTerm2 watches this file and would read a half-written
