@@ -10,35 +10,9 @@ set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 COLS=66
+. "$SCRIPT_DIR/lib/ui.sh"
 
-# ─── Colours ────────────────────────────────────────────────────────────
-if [ -t 1 ] && [ -z "${NO_COLOR:-}" ] && command -v tput >/dev/null 2>&1 \
-   && [ "$(tput colors 2>/dev/null || echo 0)" -ge 8 ]; then
-    BOLD="$(tput bold)"; DIM="$(tput dim)"; RESET="$(tput sgr0)"
-    RED="$(tput setaf 1)"; GREEN="$(tput setaf 2)"; YELLOW="$(tput setaf 3)"
-    BLUE="$(tput setaf 4)"; CYAN="$(tput setaf 6)"
-else
-    BOLD=""; DIM=""; RESET=""; RED=""; GREEN=""; YELLOW=""; BLUE=""; CYAN=""
-fi
-
-# ─── Drawing helpers ────────────────────────────────────────────────────
-repeat() { local n=$1 c=$2 i=0; while [ $i -lt "$n" ]; do printf '%s' "$c"; i=$((i+1)); done; }
-rule()   { printf "%s" "$DIM"; repeat $COLS "─"; printf "%s\n" "$RESET"; }
-
-bline() { # text [style] — padding is measured on the plain text, not the escapes
-    local text="$1" style="${2:-}" pad=$(( COLS - 4 - ${#1} ))
-    [ $pad -lt 0 ] && pad=0
-    printf "%s│%s  %s%s%s" "$BLUE" "$RESET" "$style" "$text" "$RESET"
-    repeat $pad " "; printf "%s│%s\n" "$BLUE" "$RESET"
-}
-
-banner() {
-    printf "\n%s╭" "$BLUE"; repeat $((COLS-2)) "─"; printf "╮%s\n" "$RESET"
-    bline "Workstation Setup" "$BOLD"
-    bline "$1" "$DIM"
-    printf "%s╰" "$BLUE"; repeat $((COLS-2)) "─"; printf "╯%s\n" "$RESET"
-}
-
+# ─── Setup-specific output ──────────────────────────────────────────────
 progress() { # current total
     local cur=$1 total=$2 width=30 filled i=0
     [ "$total" -eq 0 ] && return 0
@@ -52,27 +26,9 @@ progress() { # current total
 }
 
 step_header() { printf "\n%s%s▸ [%d/%d] %s%s\n" "$BOLD" "$CYAN" "$1" "$2" "$3" "$RESET"; }
-ok()   { printf "  %s✓%s %s\n" "$GREEN"  "$RESET" "$1"; }
-bad()  { printf "  %s✗%s %s\n" "$RED"    "$RESET" "$1"; }
-warn() { printf "  %s!%s %s\n" "$YELLOW" "$RESET" "$1"; }
-info() { printf "  %s%s%s\n"   "$DIM"    "$1"     "$RESET"; }
 # success line for a step that changes something — silent during a dry run,
 # where the "would run" lines above it already say what would happen
 ok_done() { [ "$DRY_RUN" = true ] && return 0; ok "$1"; }
-
-# ─── Prompts ────────────────────────────────────────────────────────────
-ask_yn() { # question default(Y|N) -> 0 for yes
-    local q="$1" def="${2:-Y}" ans prompt
-    if [ "$INTERACTIVE" = false ]; then
-        [ "$def" = "Y" ] && return 0 || return 1
-    fi
-    if [ "$def" = "Y" ]; then prompt="[Y/n]"; else prompt="[y/N]"; fi
-    printf "  %s?%s %s %s%s%s " "$BOLD" "$RESET" "$q" "$DIM" "$prompt" "$RESET"
-    read -r ans || ans=""
-    ans="$(printf '%s' "$ans" | tr '[:upper:]' '[:lower:]')"
-    [ -z "$ans" ] && ans="$(printf '%s' "$def" | tr '[:upper:]' '[:lower:]')"
-    [ "$ans" = "y" ] || [ "$ans" = "yes" ]
-}
 
 # ─── Step registry ──────────────────────────────────────────────────────
 # Keys are ordered; label/detail/skip-flag looked up by case (bash 3.2 safe).
@@ -373,7 +329,7 @@ INTERACTIVE=true
 is_skipped() { case " $SKIPPED " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
 
 # ─── Walkthrough ────────────────────────────────────────────────────────
-banner "$([ "$PLATFORM" = mac ] && echo macOS || echo Linux)$([ "$DRY_RUN" = true ] && echo ' · dry run')"
+banner "Workstation Setup" "$([ "$PLATFORM" = mac ] && echo macOS || echo Linux)$([ "$DRY_RUN" = true ] && echo ' · dry run')"
 
 if [ "$PLATFORM" = mac ] && [ -z "$PROFILE" ]; then
     if [ "$INTERACTIVE" = true ]; then

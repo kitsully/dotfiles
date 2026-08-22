@@ -175,6 +175,50 @@ work address while everything else keeps the personal one. The `includeIf`
 line itself contains no private data and is safe to commit; `~/.gitconfig.work`
 stays untracked. Verify with `git config user.email` inside a work repo.
 
+## Keeping the Repo in Sync
+
+Configs that `install.sh` symlinks — zsh, git, nvim — are edited in place and
+show up in `git status` on their own. Three things do **not**, because they live
+outside the repo and drift silently: packages you install with `brew`, VS Code
+extensions, and the iTerm2 profile.
+
+`sync.sh` reports that drift and offers to fold it back in:
+
+```bash
+./sync.sh --dry-run    # just show what changed on this machine
+./sync.sh              # show it, then offer to update the files and commit
+```
+
+```
+Homebrew packages
+  ! 9 installed here but not tracked
+      + brew "direnv"
+      + mas "Xcode", id: 497799835
+  ! 3 tracked but not installed here
+      - brew "mosh"
+```
+
+Notes on how it behaves:
+
+- It compares against `Brewfile` plus **the profile this machine uses**, so
+  personal-only apps are not reported as missing on a work Mac. Pass
+  `--work`/`--personal` if the guess is wrong.
+- Newly installed packages are only ever **added**, and it asks whether they
+  belong in the core `Brewfile` or this machine's profile file.
+- Things tracked but not installed are **reported and left alone** — on a fresh
+  machine that just means you have not installed them yet, not that you want
+  them dropped.
+- `mas` entries are matched by ID, since the App Store name Homebrew reports
+  ("CARROTweather") often differs from the one in the Brewfile ("CARROT Weather").
+- Committing is offered at the end; pushing defaults to no.
+
+| Flag | Effect |
+|------|--------|
+| `-n`, `--dry-run` | Report only, change nothing |
+| `-y`, `--yes` | Take every default, ask nothing |
+| `--no-commit` | Update the files but leave them uncommitted |
+| `--work` / `--personal` | Which profile this machine uses |
+
 ## Updating an Existing Machine
 
 After making changes on one machine, pull them down on another:
@@ -210,6 +254,8 @@ To verify everything is in order:
 | `Brewfile.work` | Work-machine additions (minimal; container runtime is opt-in) |
 | `linux/packages.sh` | Distro-native package install (Ubuntu, Fedora, RHEL, Arch) |
 | `setup.sh` | Main bootstrap script (run once on a fresh machine) |
+| `sync.sh` | Reports drift in packages, VS Code extensions and the iTerm2 profile, then commits |
+| `lib/ui.sh` | Shared colours and prompts for `setup.sh` and `sync.sh` |
 | `install.sh` | Creates symlinks — platform-aware for git and SSH configs |
 | `doctor.sh` | Health check — verifies tools, symlinks, and config |
 | `macos-defaults.sh` | macOS system preferences (dark mode, dock, keyboard, Finder) |
