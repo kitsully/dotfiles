@@ -11,6 +11,13 @@ fi
 export PATH="$HOME/go/bin:$PATH"
 export PATH="$HOME/.local/bin:$PATH"
 
+# === Homebrew ===
+# Download one thing at a time in interactive shells: parallel download
+# output can scroll a cask installer's 'Password:' prompt off-screen, which
+# looks exactly like a hang. setup.sh does not read this file — it keeps
+# parallel downloads and answers the prompts itself via SUDO_ASKPASS.
+export HOMEBREW_DOWNLOAD_CONCURRENCY=1
+
 # === Completions ===
 autoload -Uz compinit && compinit
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
