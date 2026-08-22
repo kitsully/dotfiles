@@ -7,8 +7,22 @@ Cross-platform setup scripts and configuration files for macOS and Linux.
 ```bash
 git clone https://github.com/kitsully/dotfiles.git ~/dotfiles
 cd ~/dotfiles
-./setup.sh
+./dotfiles.sh
 ```
+
+`dotfiles.sh` is the one command to remember. It offers the three things you
+can do with this repo:
+
+```
+    1  Set up this machine   install packages, link configs
+    2  Sync back to the repo pick up local changes · 3 uncommitted
+    3  Check this machine    verify tools, symlinks, config
+    q  Quit
+```
+
+Each one also runs on its own if you would rather skip the menu —
+`./setup.sh`, `./sync.sh`, `./doctor.sh` — and `./dotfiles.sh setup --work`
+passes flags straight through.
 
 Run with no arguments and it walks you through it: it asks whether this is a
 work or personal machine, prints the plan, waits for you to confirm, then shows
@@ -182,7 +196,16 @@ show up in `git status` on their own. Three things do **not**, because they live
 outside the repo and drift silently: packages you install with `brew`, VS Code
 extensions, and the iTerm2 profile.
 
-`sync.sh` reports that drift and offers to fold it back in:
+`sync.sh` reports that drift, then lets you tick off what to fold in. Anything
+already in sync starts unchecked, so the default is usually what you want:
+
+```
+  ↑↓ or j/k move · space toggles · a all · enter accepts
+
+   ▸ [x] Homebrew packages          9 to add, 3 not installed here
+     [x] VS Code extensions         0 added, 1 removed
+     [ ] iTerm2 profile             in sync
+```
 
 ```bash
 ./sync.sh --dry-run    # just show what changed on this machine
@@ -253,9 +276,10 @@ To verify everything is in order:
 | `Brewfile.personal` | Personal-only apps, licensed software and Mac App Store apps |
 | `Brewfile.work` | Work-machine additions (minimal; container runtime is opt-in) |
 | `linux/packages.sh` | Distro-native package install (Ubuntu, Fedora, RHEL, Arch) |
+| `dotfiles.sh` | Front door — menu over setup, sync and doctor |
 | `setup.sh` | Main bootstrap script (run once on a fresh machine) |
 | `sync.sh` | Reports drift in packages, VS Code extensions and the iTerm2 profile, then commits |
-| `lib/ui.sh` | Shared colours and prompts for `setup.sh` and `sync.sh` |
+| `lib/ui.sh` | Shared colours, prompts, progress bars and the checkbox picker |
 | `install.sh` | Creates symlinks — platform-aware for git and SSH configs |
 | `doctor.sh` | Health check — verifies tools, symlinks, and config |
 | `macos-defaults.sh` | macOS system preferences (dark mode, dock, keyboard, Finder) |

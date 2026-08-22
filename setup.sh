@@ -13,19 +13,6 @@ COLS=66
 . "$SCRIPT_DIR/lib/ui.sh"
 
 # ─── Setup-specific output ──────────────────────────────────────────────
-progress() { # current total
-    local cur=$1 total=$2 width=30 filled i=0
-    [ "$total" -eq 0 ] && return 0
-    filled=$(( cur * width / total ))
-    printf "  %s[%s" "$DIM" "$RESET"
-    while [ $i -lt $width ]; do
-        if [ $i -lt $filled ]; then printf "%s■%s" "$GREEN" "$RESET"; else printf "%s·%s" "$DIM" "$RESET"; fi
-        i=$((i+1))
-    done
-    printf "%s]%s %s%d%%%s\n" "$DIM" "$RESET" "$BOLD" $(( cur * 100 / total )) "$RESET"
-}
-
-step_header() { printf "\n%s%s▸ [%d/%d] %s%s\n" "$BOLD" "$CYAN" "$1" "$2" "$3" "$RESET"; }
 # success line for a step that changes something — silent during a dry run,
 # where the "would run" lines above it already say what would happen
 ok_done() { [ "$DRY_RUN" = true ] && return 0; ok "$1"; }
@@ -160,100 +147,6 @@ run_step() {
     esac
 }
 
-# ─── Checkbox picker ────────────────────────────────────────────────────
-# Arrow keys or j/k move, space toggles, a toggles all, enter accepts.
-# Falls back to typing numbers when the terminal cannot redraw.
-CB_KEYS=""; CB_STATE=""
-trap 'printf "\033[?25h"' EXIT INT TERM
-
-# NB: braces are required — $10 would parse as ${1}0, silently dropping item 10
-cb_get()  { local idx="$1"; set -- $CB_STATE; eval "echo \${$(( idx + 1 ))}"; }
-cb_set()  { local i=0 out="" v; for v in $CB_STATE; do
-                if [ $i -eq "$1" ]; then out="$out $2"; else out="$out $v"; fi; i=$((i+1)); done
-            CB_STATE="$out"; }
-
-cb_render() { # cursor_index -> prints the list
-    local i=0 k mark pointer
-    for k in $CB_KEYS; do
-        if [ "$(cb_get $i)" = 1 ]; then mark="${GREEN}[x]${RESET}"; else mark="${DIM}[ ]${RESET}"; fi
-        if [ $i -eq "$1" ]; then pointer="${CYAN}▸${RESET}"; else pointer=" "; fi
-        printf "\033[2K   %s %s %-26s %s%s%s\n" "$pointer" "$mark" "$(step_label "$k")" "$DIM" "$(step_detail "$k")" "$RESET"
-        i=$((i+1))
-    done
-}
-
-cb_read_key() {
-    local k rest
-    IFS= read -rsn1 k || { echo enter; return; }
-    case "$k" in
-        "")   echo enter ;;
-        " ")  echo space ;;
-        j|J)  echo down ;;
-        k|K)  echo up ;;
-        a|A)  echo all ;;
-        q|Q)  echo quit ;;
-        $'\033')
-            IFS= read -rsn2 rest || { echo other; return; }
-            case "$rest" in "[A") echo up ;; "[B") echo down ;; *) echo other ;; esac ;;
-        *)    echo other ;;
-    esac
-}
-
-checkbox_menu() { # items... -> sets PLAN
-    local i n=0 k cur=0 key any
-    CB_KEYS="$1"; CB_STATE=""
-    for k in $CB_KEYS; do CB_STATE="$CB_STATE 1"; n=$((n+1)); done
-
-    # No ANSI (dumb terminal / NO_COLOR): use the numeric fallback instead
-    if [ -z "$RESET" ]; then cb_numeric "$n"; return; fi
-
-    printf "\n%sChoose the steps to run%s\n" "$BOLD" "$RESET"
-    printf "  %s↑↓ or j/k move · space toggles · a all · enter accepts%s\n\n" "$DIM" "$RESET"
-    printf "\033[?25l"
-    cb_render "$cur"
-    while :; do
-        key="$(cb_read_key)"
-        case "$key" in
-            up)    cur=$(( cur > 0 ? cur - 1 : n - 1 )) ;;
-            down)  cur=$(( cur < n - 1 ? cur + 1 : 0 )) ;;
-            space) if [ "$(cb_get $cur)" = 1 ]; then cb_set $cur 0; else cb_set $cur 1; fi ;;
-            all)   any=0; for i in $CB_STATE; do [ "$i" = 0 ] && any=1; done
-                   i=0; CB_STATE=""; while [ $i -lt $n ]; do CB_STATE="$CB_STATE $any"; i=$((i+1)); done ;;
-            quit)  printf "\033[?25h\n  Nothing was changed.\n\n"; exit 0 ;;
-            enter) break ;;
-        esac
-        printf "\033[%dA" "$n"
-        cb_render "$cur"
-    done
-    printf "\033[?25h"
-
-    PLAN=""; i=0
-    for k in $CB_KEYS; do [ "$(cb_get $i)" = 1 ] && PLAN="$PLAN $k"; i=$((i+1)); done
-}
-
-cb_numeric() { # n — fallback for terminals we cannot redraw
-    local n="$1" i k pick
-    while :; do
-        printf "\n%sChoose the steps to run%s\n\n" "$BOLD" "$RESET"
-        i=0
-        for k in $CB_KEYS; do
-            [ "$(cb_get $i)" = 1 ] && printf "   %2d  [x] %s\n" $((i+1)) "$(step_label "$k")" \
-                                   || printf "   %2d  [ ] %s\n" $((i+1)) "$(step_label "$k")"
-            i=$((i+1))
-        done
-        printf "\n  %s?%s Numbers to toggle (e.g. 2 5), or enter to accept " "$BOLD" "$RESET"
-        read -r pick || pick=""
-        [ -z "$pick" ] && break
-        for i in $pick; do
-            case "$i" in ''|*[!0-9]*) continue ;; esac
-            [ "$i" -ge 1 ] && [ "$i" -le "$n" ] || continue
-            if [ "$(cb_get $((i-1)))" = 1 ]; then cb_set $((i-1)) 0; else cb_set $((i-1)) 1; fi
-        done
-    done
-    PLAN=""; i=0
-    for k in $CB_KEYS; do [ "$(cb_get $i)" = 1 ] && PLAN="$PLAN $k"; i=$((i+1)); done
-}
-
 # ─── Usage ──────────────────────────────────────────────────────────────
 usage() {
     cat <<USAGE
@@ -363,7 +256,11 @@ show_plan() {
     printf "\n"
 }
 
-customize() { checkbox_menu "$ALL_STEPS"; }
+customize() {
+    printf "\n%sChoose the steps to run%s\n" "$BOLD" "$RESET"
+    checkbox_menu "$ALL_STEPS" step_label step_detail
+    PLAN="$CB_SELECTED"
+}
 
 show_plan
 
