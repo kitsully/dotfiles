@@ -25,7 +25,15 @@ link() {
     if [ "$LIST_ONLY" = true ]; then printf '%s\t%s\n' "$src" "$dst"; return 0; fi
     mkdir -p "$(dirname "$dst")"
     if [ -L "$dst" ]; then
-        rm "$dst"
+        # replace our own links freely, but a symlink into somewhere else
+        # (oh-my-zsh, another dotfiles tool) is backed up like a real file
+        case "$(readlink "$dst")" in
+            "$DOTFILES"/*) rm "$dst" ;;
+            *) local bak="$dst.bak"
+               [ -e "$bak" ] || [ -L "$bak" ] && bak="$dst.bak.$(date +%Y%m%d%H%M%S)"
+               echo "  backing up $dst -> $bak"
+               mv "$dst" "$bak" ;;
+        esac
     elif [ -e "$dst" ]; then
         local bak="$dst.bak"
         [ -e "$bak" ] && bak="$dst.bak.$(date +%Y%m%d%H%M%S)"
@@ -36,19 +44,29 @@ link() {
     echo "  $dst -> $src"
 }
 
+# ssh refuses configs in a directory other users can touch — create it tight
+if [ "$LIST_ONLY" = false ]; then
+    mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh"
+fi
+
 # ── Dotfiles linked straight into ~ — add or remove a line here ──────────
 link "$DOTFILES/zsh/.zshrc"             "$HOME/.zshrc"
 link "$DOTFILES/git/.gitconfig"         "$HOME/.gitconfig"
 link "$DOTFILES/git/.gitignore_global"  "$HOME/.gitignore_global"
 link "$DOTFILES/claude/settings.json"   "$HOME/.claude/settings.json"
+# public key material only — the private keys live in 1Password, never here
+link "$DOTFILES/ssh/allowed_signers"      "$HOME/.ssh/allowed_signers"
+link "$DOTFILES/ssh/git_signing_key.pub"  "$HOME/.ssh/git_signing_key.pub"
 
 if [ "$OS" = Darwin ]; then
     link "$DOTFILES/git/.gitconfig-macos.local" "$HOME/.gitconfig.local"
     link "$DOTFILES/ssh/config.macos"           "$HOME/.ssh/config"
     link "$DOTFILES/iterm2/Default.json" "$HOME/Library/Application Support/iTerm2/DynamicProfiles/Default.json"
+    link "$DOTFILES/vscode/settings.json" "$HOME/Library/Application Support/Code/User/settings.json"
 else
     link "$DOTFILES/git/.gitconfig-linux.local" "$HOME/.gitconfig.local"
     link "$DOTFILES/ssh/config.linux"           "$HOME/.ssh/config"
+    link "$DOTFILES/vscode/settings.json"       "$HOME/.config/Code/User/settings.json"
 fi
 
 # ── Everything under config/ mirrors into ~/.config/ — nothing to edit ───

@@ -57,8 +57,7 @@ if [ "$(uname)" = Darwin ]; then
     fi
 fi
 
-TMP="${TMPDIR:-/tmp}/dotfiles-sync.$$"
-mkdir -p "$TMP"
+TMP="$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-sync.XXXXXX")" || exit 1
 trap 'rm -rf "$TMP"' EXIT INT TERM
 
 # ── Homebrew packages ───────────────────────────────────────────────────

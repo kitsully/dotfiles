@@ -133,6 +133,10 @@ check "signing is on" "Commits will not be marked verified on GitHub." \
 check "signing key is set" "No signing key is configured, so signed commits will fail." \
     "Point user.signingkey at your public key, then add it to GitHub as a signing key." \
     -- test -n "$(git config user.signingkey)"
+SIGNING_KEY="$(git config user.signingkey)"
+check "signing key file exists" "user.signingkey points at a file that is not on this machine, so the first commit will fail." \
+    "Save the public key there — see Post-Setup step 3 in README.md." \
+    -- test -f "${SIGNING_KEY/#\~/$HOME}"
 
 # ── Platform extras ─────────────────────────────────────────────────────
 printf "\n%s%s extras%s\n" "$BOLD" "$([ "$OS" = Darwin ] && echo Mac || echo Linux)" "$RESET"

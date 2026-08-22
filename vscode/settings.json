@@ -1,0 +1,39 @@
+{
+    "workbench.colorTheme": "GitHub Dark",
+    "editor.inlineSuggest.enabled": true,
+    "github.copilot.enable": {
+        "*": true,
+        "plaintext": true,
+        "markdown": true,
+        "scminput": false,
+        "yaml": true
+    },
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.autopep8",
+        "editor.formatOnType": true
+    },
+    "files.associations": {
+        "*.py": "python"
+    },
+    "redhat.telemetry.enabled": true,
+    "terminal.integrated.inheritEnv": false,
+    "git.confirmSync": false,
+    "git.autofetch": true,
+    "remote.extensionKind": {
+        "GitHub.copilot": ["ui"],
+    },
+    "editor.lineNumbers": "relative",
+    "[dockerfile]": {
+        "editor.defaultFormatter": "foxundermoon.shell-format"
+    },
+    "settingsSync.ignoredExtensions": [
+        "quick-lint.quick-lint-js"
+    ],
+    "editor.guides.bracketPairs": "active",
+    "extensions.experimental.affinity": {
+        "asvetliakov.vscode-neovim": 1
+    },
+    "editor.fontFamily": "\"JetBrainsMono Nerd Font Mono\"",
+    "editor.fontSize": 14,
+    "docker.extension.enableComposeLanguageServer": false
+}

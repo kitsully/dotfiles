@@ -5,6 +5,10 @@ of scripts that install, link, sync and check them. macOS and Linux.
 
 ## Quick start
 
+On a brand-new Mac, straight out of the box (nothing to install first — the
+`git clone` itself triggers the Command Line Tools dialog; click Install,
+wait, then run the clone again; https needs no ssh keys, which come later):
+
 ```bash
 git clone https://github.com/kitsully/dotfiles.git ~/dotfiles
 cd ~/dotfiles
@@ -15,7 +19,7 @@ Three scripts, no menus, no prompts:
 
 | Script | Does | When |
 |--------|------|------|
-| `./setup.sh` | Installs everything: Xcode CLI tools, Homebrew, packages, symlinks, VS Code extensions, fzf + iTerm2 integration, macOS preferences, then a health check. Add `--upgrade` to also update already-installed packages. | Fresh machine — and re-run any time to pick up new packages and configs. |
+| `./setup.sh` | Installs everything: Xcode CLI tools, Homebrew, packages, symlinks, VS Code extensions, fzf + iTerm2 integration, macOS preferences, then a health check. Add `--upgrade` to also update already-installed packages, `--dock` to also apply the Dock layout (off by default — it replaces the current Dock). | Fresh machine — and re-run any time to pick up new packages and configs. |
 | `./sync.sh` | Folds this machine's drift back into the repo: brew packages, VS Code extensions, the iTerm2 profile. Shows `git status`; you review and commit. | Occasionally, at the keyboard. |
 | `./doctor.sh` | Says what is wrong and how to fix it. Changes nothing. | When in doubt. |
 
@@ -46,6 +50,10 @@ Each of these is also answered by a comment in the file you would edit.
   `./setup.sh <name>`.
 - **Skip a step for one run** — comment out its `step` line at the bottom of
   `setup.sh`.
+- **Change the Dock** — edit `dock/<profile>.txt` (one app path per line,
+  top-to-bottom is left-to-right), then `./setup.sh --dock`. Without the
+  flag the Dock is never touched — the step replaces the whole layout, so
+  it is opt-in.
 - **Add a config file** — put it under `config/`; `install.sh` links
   everything in there to the same path under `~/.config` automatically.
   Dotfiles that live directly in `~` get one `link` line in `install.sh`.
@@ -73,6 +81,7 @@ Each of these is also answered by a comment in the file you would edit.
 | `sync.sh` | Folds brew/VS Code/iTerm2 drift back into the repo |
 | `doctor.sh` | Health check, report-only |
 | `macos-defaults.sh` | macOS system preferences (dock, keyboard, Finder…) |
+| `dock/<profile>.txt` | Dock layout per profile: one app path per line, in order; `setup.sh --dock` applies it with `dockutil` (opt-in) |
 | `linux/packages.sh` | Distro-native packages: Ubuntu/Debian, Fedora, RHEL, Arch |
 | `zsh/`, `git/`, `ssh/`, `config/`, `iterm2/`, `vscode/` | The actual configs |
 
@@ -82,7 +91,8 @@ Notes on two of the configs:
   **Dotfiles**) with its own Guid — iTerm2 refuses a dynamic profile that
   reuses a real profile's Guid. `sync.sh` compares settings semantically.
 - `vscode/extensions.txt` is exactly `code --list-extensions`; setup installs
-  from it, sync rewrites it.
+  from it, sync rewrites it. `vscode/settings.json` is symlinked into VS
+  Code's User folder, so edits in VS Code's settings UI land in the repo.
 - `config/mise/config.toml` pins the global language runtimes (node, python,
   go) — mise makes `python`/`node`/`go` work at any prompt, and a directory
   with its own `.mise.toml` overrides them. Brew stays for CLI tools and
@@ -126,8 +136,10 @@ The manual follow-ups `setup.sh` cannot do:
 1. Sign into 1Password and enable Settings → Developer → "Use the SSH agent".
 2. Store or import your SSH key in 1Password; add the public key to GitHub as
    both an **authentication** and a **signing** key.
-3. Check `user.signingkey` in `git/.gitconfig` matches (`ssh-add -L` shows the
-   agent's key); put the public key at `~/.ssh/git_signing_key.pub`.
+3. Check the tracked public key still matches the agent's (`ssh-add -L` vs
+   `ssh/git_signing_key.pub` — install.sh links it to
+   `~/.ssh/git_signing_key.pub`, so signing works as soon as 1Password is
+   signed in; only a *new* key means updating the repo copy).
 4. Install Claude Code: `curl -fsSL https://claude.ai/install.sh | bash` (the standalone installer keeps itself updated)
 5. Test: `ssh -T git@github.com`, then `git commit --allow-empty -m test`.
 

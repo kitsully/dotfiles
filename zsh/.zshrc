@@ -34,10 +34,11 @@ precmd() {
 PROMPT='%B%(?.%F{green}.%F{red})➜%f%b %B%F{cyan}%c%f%b${vcs_info_msg_0_} '
 
 # === Tool Integrations ===
-eval "$(zoxide init zsh)"
-eval "$(mise activate zsh)"
-eval "$(atuin init zsh)"
-eval "$(fzf --zsh)"
+# guarded so a half-set-up machine gets a working shell, not a wall of errors
+command -v zoxide >/dev/null && eval "$(zoxide init zsh)"
+command -v mise   >/dev/null && eval "$(mise activate zsh)"
+command -v atuin  >/dev/null && eval "$(atuin init zsh)"
+command -v fzf    >/dev/null && eval "$(fzf --zsh)"
 
 # === Zsh Plugins ===
 if [[ "$(uname)" == "Darwin" ]]; then
@@ -51,11 +52,15 @@ else
 fi
 
 # === 1Password ===
+# only take over ssh auth once the agent actually exists — otherwise all ssh
+# breaks on a machine where 1Password is not (yet) installed or allowed
 if [[ "$(uname)" == "Darwin" ]]; then
-    export SSH_AUTH_SOCK=~/Library/Group\ Containers/2BUA8C4S2C.com.1password/t/agent.sock
+    _op_sock="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
 else
-    export SSH_AUTH_SOCK=~/.1password/agent.sock
+    _op_sock="$HOME/.1password/agent.sock"
 fi
+[[ -S "$_op_sock" ]] && export SSH_AUTH_SOCK="$_op_sock"
+unset _op_sock
 
 # === FZF ===
 if [[ "$(uname)" == "Darwin" ]]; then

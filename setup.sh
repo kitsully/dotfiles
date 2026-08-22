@@ -9,7 +9,8 @@
 #                            ~/.config/dotfiles/profile
 #   ./setup.sh --upgrade     also upgrade already-installed packages to their
 #                            latest versions (default is install-missing only)
-#   ./setup.sh --upgrade     also upgrade already-installed packages
+#   ./setup.sh --dock        also apply the Dock layout from dock/<profile>.txt
+#                            (replaces the current Dock, so it is opt-in)
 #   ./setup.sh --dry-run     show what would run, change nothing
 #
 # To skip a step for one run, comment out its `step` line at the bottom.
@@ -41,11 +42,13 @@ profiles() { ls "$SCRIPT_DIR"/Brewfile.* 2>/dev/null | sed 's/.*Brewfile\./  /';
 # ── Arguments: [profile] [--upgrade] [--dry-run] ────────────────────────
 DRY_RUN=false
 UPGRADE=false
+DOCK=false
 PROFILE=""
 for arg in "$@"; do
     case "$arg" in
         -n|--dry-run) DRY_RUN=true ;;
         --upgrade)    UPGRADE=true ;;
+        --dock)       DOCK=true ;;
         -h|--help)    awk 'NR>1 && /^#/ { sub(/^# ?/, ""); print; next } NR>1 { exit }' "$0"; exit 0 ;;
         -*)           printf "unknown flag '%s' — try --help\n" "$arg"; exit 1 ;;
         *)            PROFILE="$arg" ;;
@@ -84,7 +87,13 @@ do_xcode() {
     if [ "$DRY_RUN" = true ]; then info "would run: xcode-select --install"; return 0; fi
     info "a system dialog will open — click Install; waiting until it finishes"
     xcode-select --install 2>/dev/null
-    until xcode-select -p >/dev/null 2>&1; do sleep 10; done
+    # bounded: if the dialog was cancelled (or never appeared), fail the step
+    # instead of spinning here forever
+    local waited=0
+    until xcode-select -p >/dev/null 2>&1; do
+        [ "$waited" -ge 1800 ] && { warn "not installed after 30 minutes — dialog cancelled? re-run ./setup.sh"; return 1; }
+        sleep 10; waited=$((waited+10))
+    done
     if command -v xcodebuild >/dev/null 2>&1 && ! xcodebuild -checkFirstLaunchStatus >/dev/null 2>&1; then
         info "accepting the Xcode license (needs your password)"
         sudo xcodebuild -license accept || return 1
@@ -168,6 +177,29 @@ do_iterm2() {
 
 do_macos_defaults() { run bash "$SCRIPT_DIR/macos-defaults.sh"; }
 
+# Dock layout is declarative: dock/<profile>.txt lists the apps in order,
+# and the Dock is set to exactly that list. Edit the file to change it.
+do_dock() {
+    local list="$SCRIPT_DIR/dock/$PROFILE.txt"
+    [ "$DOCK" = false ] && { info "off by default (replaces the current Dock) — pass --dock to apply dock/$PROFILE.txt"; return 0; }
+    [ -f "$list" ] || { info "no dock/$PROFILE.txt in the repo — skipping"; return 0; }
+    command -v dockutil >/dev/null 2>&1 || { warn "dockutil not installed (it is in the Brewfile) — skipping"; return 0; }
+    if [ "$DRY_RUN" = true ]; then info "would set the Dock from dock/$PROFILE.txt"; return 0; fi
+    dockutil --remove all --no-restart >/dev/null 2>&1
+    local app missing=""
+    while IFS= read -r app; do
+        case "$app" in ''|\#*) continue ;; esac
+        if [ -e "$app" ]; then
+            dockutil --add "$app" --no-restart >/dev/null 2>&1 || warn "could not add ${app##*/}"
+        else
+            missing="$missing${app##*/}, "
+        fi
+    done < "$list"
+    killall Dock 2>/dev/null
+    [ -n "$missing" ] && info "not installed yet, left out: ${missing%, } — re-run setup once installed"
+    ok "Dock set from dock/$PROFILE.txt"
+}
+
 # findings here (a missing sign-in, say) are not a setup failure — always 0
 do_doctor() { run bash "$SCRIPT_DIR/doctor.sh"; return 0; }
 
@@ -190,6 +222,7 @@ if [ "$PLATFORM" = mac ]; then
     step "fzf shell integration"           do_fzf
     step "iTerm2 shell integration"        do_iterm2
     step "macOS preferences"               do_macos_defaults
+    step "Dock layout"                     do_dock
     step "Health check"                    do_doctor
 else
     step "Packages"                        do_packages

@@ -7,6 +7,7 @@
 brew "atuin"
 brew "awscli"
 brew "cmake"
+brew "dockutil"
 brew "fd"
 brew "findutils"
 brew "fzf"
