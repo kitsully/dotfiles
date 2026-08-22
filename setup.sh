@@ -214,6 +214,10 @@ step() {
 if [ "$PLATFORM" = mac ]; then
     step "Xcode Command Line Tools"        do_xcode
     step "Homebrew"                        do_brew
+    # preferences run before packages on purpose: they enable Touch ID for
+    # sudo, so the pkg-cask installers below prompt with a fingerprint tap
+    # instead of a typed password (Homebrew ignores cached sudo for those)
+    step "macOS preferences"               do_macos_defaults
     step "Packages (core + $PROFILE)"      do_packages
     step "Directories"                     do_dirs
     step "Dotfile symlinks"                do_symlinks
@@ -221,7 +225,6 @@ if [ "$PLATFORM" = mac ]; then
     step "VS Code extensions"              do_vscode
     step "fzf shell integration"           do_fzf
     step "iTerm2 shell integration"        do_iterm2
-    step "macOS preferences"               do_macos_defaults
     step "Dock layout"                     do_dock
     step "Health check"                    do_doctor
 else
