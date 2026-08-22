@@ -34,6 +34,7 @@ mas "AdBlock Pro", id: 1018301773
 mas "CARROT Weather", id: 993487541
 mas "Dark Reader for Safari", id: 1438243180
 mas "Day One", id: 1055511498
+mas "Developer", id: 640199958
 mas "Evernote", id: 406056744
 mas "Fantastical", id: 975937182
 mas "Flighty", id: 1358823008
@@ -45,4 +46,6 @@ mas "Numbers", id: 409203825
 mas "Pages", id: 409201541
 mas "PCalc", id: 403504866
 mas "Pixelmator Pro", id: 1289583905
+mas "TestFlight", id: 899247664
 mas "Todoist", id: 585829637
+mas "Xcode", id: 497799835

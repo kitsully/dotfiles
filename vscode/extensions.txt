@@ -5,7 +5,6 @@ docker.docker
 dominicvonk.vscode-resx-editor
 dvirtz.parquet-viewer
 foxundermoon.shell-format
-github.copilot-chat
 github.github-vscode-theme
 jdinhlife.gruvbox
 jeff-hykin.better-dockerfile-syntax

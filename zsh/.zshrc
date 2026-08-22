@@ -21,8 +21,8 @@ setopt PROMPT_SUBST
 
 zstyle ':vcs_info:*' enable git
 zstyle ':vcs_info:git:*' check-for-changes true
-zstyle ':vcs_info:git:*' unstagedstr   ' %F{yellow}✗'
-zstyle ':vcs_info:git:*' stagedstr     ' %F{yellow}✗'
+zstyle ':vcs_info:git:*' unstagedstr   ' %F{yellow}!'
+zstyle ':vcs_info:git:*' stagedstr     ' %F{green}+'
 zstyle ':vcs_info:git:*' formats       ' %F{blue}git:(%F{red}%b%F{blue})%f%u%c'
 zstyle ':vcs_info:git:*' actionformats ' %F{blue}git:(%F{red}%b|%a%F{blue})%f%u%c'
 
