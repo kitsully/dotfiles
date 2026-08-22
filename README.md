@@ -20,7 +20,7 @@ Three scripts, no menus, no prompts:
 | Script | Does | When |
 |--------|------|------|
 | `./setup.sh` | Installs everything: Xcode CLI tools, Homebrew, packages, symlinks, VS Code extensions, fzf + iTerm2 integration, macOS preferences, then a health check. Add `--upgrade` to also update already-installed packages, `--dock` to also apply the Dock layout (off by default — it replaces the current Dock). | Fresh machine — and re-run any time to pick up new packages and configs. |
-| `./sync.sh` | Folds this machine's drift back into the repo: brew packages, VS Code extensions, the iTerm2 profile. Shows `git status`; you review and commit. | Occasionally, at the keyboard. |
+| `./sync.sh` | Folds this machine's drift back into the repo: brew packages, VS Code extensions, the iTerm2 profile. Shows each target's drift and asks before writing (`--yes` skips the asking); then shows `git status` — you review and commit. | Occasionally, at the keyboard. |
 | `./doctor.sh` | Says what is wrong and how to fix it. Changes nothing. | When in doubt. |
 
 Everything is safe to re-run. `--dry-run` works on `setup.sh` and `sync.sh`.

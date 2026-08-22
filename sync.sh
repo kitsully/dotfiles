@@ -3,8 +3,10 @@
 # it and never show up in `git status` on their own: brew packages, VS Code
 # extensions, the iTerm2 profile. (Symlinked configs already show up.)
 #
-#   ./sync.sh               update the repo files, then show git status —
-#                           review with `git diff`, commit when happy
+#   ./sync.sh               show each target's drift and ask before writing
+#                           it to the repo; then show git status — review
+#                           with `git diff`, commit when happy
+#   ./sync.sh --yes         write without asking (the old behavior)
 #   ./sync.sh --dry-run     report the drift and stop
 #
 # Nothing is committed or pushed for you; git is the undo button, which is
@@ -36,12 +38,31 @@ warn() { printf "  %s!%s %s\n" "$YELLOW" "$RESET" "$1"; }
 info() { printf "  %s%s%s\n" "$DIM" "$1" "$RESET"; }
 
 DRY_RUN=false
+ASSUME_YES=false
 case "${1:-}" in
     "")           ;;
     -n|--dry-run) DRY_RUN=true ;;
+    -y|--yes)     ASSUME_YES=true ;;
     -h|--help)    awk 'NR>1 && /^#/ { sub(/^# ?/, ""); print; next } NR>1 { exit }' "$0"; exit 0 ;;
     *)            printf "unknown flag '%s' — try --help\n" "$1"; exit 1 ;;
 esac
+
+# Every write goes through this: the drift is already printed above the
+# prompt, so the answer is informed. Without a terminal nothing is written —
+# an unattended run must not fold surprises into the repo.
+confirm() { # what-would-happen
+    [ "$ASSUME_YES" = true ] && return 0
+    if [ ! -t 0 ]; then
+        warn "no terminal to confirm — skipped $1 (run at a keyboard, or pass --yes)"
+        return 1
+    fi
+    printf "  %s? [y/N] " "$1"
+    read -r reply
+    case "$reply" in
+        y|Y|yes|YES) return 0 ;;
+        *)           info "left unchanged"; return 1 ;;
+    esac
+}
 
 PROFILE=""
 [ -f "$HOME/.config/dotfiles/profile" ] && PROFILE="$(cat "$HOME/.config/dotfiles/profile")"
@@ -95,6 +116,7 @@ sync_brew() {
     printf "%sbrew: installed here but not tracked%s\n" "$BOLD" "$RESET"
     sed 's/^/      + /' "$TMP/added"
     [ "$DRY_RUN" = true ] && return 0
+    confirm "add these to Brewfile.$PROFILE" || return 0
     { grep '^tap ' "$TMP/added"; grep -v '^tap ' "$TMP/added"; } >> "$SCRIPT_DIR/Brewfile.$PROFILE"
     ok "added to Brewfile.$PROFILE"
 }
@@ -115,6 +137,7 @@ sync_vscode() {
     comm -23 "$TMP/ext.live" "$TMP/ext.repo" | sed 's/^/      + /'
     comm -13 "$TMP/ext.live" "$TMP/ext.repo" | sed 's/^/      - /'
     [ "$DRY_RUN" = true ] && return 0
+    confirm "rewrite vscode/extensions.txt" || return 0
     cp "$TMP/ext.live" "$SCRIPT_DIR/vscode/extensions.txt"
     ok "rewrote vscode/extensions.txt"
 }
@@ -166,6 +189,7 @@ PYEOF
     if [ "$verdict" != DIFF ]; then ok "iterm2: in sync"; return 0; fi
     printf "%siterm2: profile changed%s\n" "$BOLD" "$RESET"
     [ "$DRY_RUN" = true ] && return 0
+    confirm "rewrite iterm2/Default.json" || return 0
     # write atomically: iTerm2 watches this file and would read a half-written
     # copy as invalid JSON
     cp "$TMP/iterm.new" "$repo_json.tmp" && mv -f "$repo_json.tmp" "$repo_json"
