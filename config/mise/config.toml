@@ -1,0 +1,9 @@
+# Global language runtimes and npm tools, installed by `mise install`
+# (setup.sh runs it). Change a version here and re-run ./setup.sh; any
+# project can override with its own .mise.toml.
+[tools]
+go = "1.26"
+node = "24"
+"npm:@modelcontextprotocol/server-filesystem" = "latest"
+"npm:ccusage" = "latest"
+python = "3.14"

@@ -13,10 +13,10 @@ brew "heroku"                # personal Heroku account
 # === Cask Apps ===
 cask "airbuddy"              # personal AirPods/device battery HUD
 cask "chatgpt"               # check employer's approved-AI-tools policy before adding at work
-cask "claude"                # check employer's approved-AI-tools policy before adding at work
 cask "docker-desktop"        # paid subscription required for larger orgs — see Brewfile.work
 cask "github"                # redundant with gh CLI
 cask "imazing"               # personal iOS device backups
+cask "keyboard-maestro"      # personal license
 cask "setapp"                # personal subscription
 cask "soulver"               # personal license
 cask "spotify"
@@ -44,5 +44,4 @@ mas "Numbers", id: 409203825
 mas "Pages", id: 409201541
 mas "PCalc", id: 403504866
 mas "Pixelmator Pro", id: 1289583905
-mas "ShellHistory", id: 1564015476
 mas "Todoist", id: 585829637

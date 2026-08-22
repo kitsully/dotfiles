@@ -3,6 +3,10 @@ set -euo pipefail
 
 # Shared packages across distros (mapped to distro-specific names where needed)
 # Covers: Ubuntu/Debian (apt), Fedora (dnf), RHEL/CentOS (dnf), Arch (pacman)
+#
+# Language runtimes (node, python, go) are deliberately NOT here — mise
+# installs them from config/mise/config.toml in the Runtimes setup step.
+# python3 stays: it is base-system on these distros and scripts expect it.
 
 detect_distro() {
     if [ -f /etc/os-release ]; then
@@ -35,12 +39,7 @@ install_debian() {
         fd-find \
         ripgrep \
         fzf \
-        golang \
         python3 \
-        python3-pip \
-        python3-venv \
-        nodejs \
-        npm \
         cmake \
         graphviz \
         pandoc \
@@ -70,11 +69,7 @@ install_fedora() {
         fd-find \
         ripgrep \
         fzf \
-        golang \
         python3 \
-        python3-pip \
-        nodejs \
-        npm \
         cmake \
         graphviz \
         pandoc \
@@ -101,11 +96,7 @@ install_rhel() {
         fd-find \
         ripgrep \
         fzf \
-        golang \
         python3 \
-        python3-pip \
-        nodejs \
-        npm \
         cmake \
         graphviz \
         pandoc \
@@ -131,11 +122,7 @@ install_arch() {
         fd \
         ripgrep \
         fzf \
-        go \
         python \
-        python-pip \
-        nodejs \
-        npm \
         cmake \
         graphviz \
         pandoc \
