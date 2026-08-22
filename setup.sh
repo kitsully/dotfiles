@@ -7,6 +7,8 @@
 #                            machine is just a new Brewfile.<name> — no code.
 #   ./setup.sh               later runs reuse the profile recorded in
 #                            ~/.config/dotfiles/profile
+#   ./setup.sh --upgrade     also upgrade already-installed packages to their
+#                            latest versions (default is install-missing only)
 #   ./setup.sh --dry-run     show what would run, change nothing
 #
 # To skip a step for one run, comment out its `step` line at the bottom.
@@ -35,12 +37,14 @@ run()  { if [ "$DRY_RUN" = true ]; then info "would run: $*"; return 0; fi; "$@"
 
 profiles() { ls "$SCRIPT_DIR"/Brewfile.* 2>/dev/null | sed 's/.*Brewfile\./  /'; }
 
-# ── Arguments: [profile] [--dry-run] ────────────────────────────────────
+# ── Arguments: [profile] [--upgrade] [--dry-run] ────────────────────────
 DRY_RUN=false
+UPGRADE=false
 PROFILE=""
 for arg in "$@"; do
     case "$arg" in
         -n|--dry-run) DRY_RUN=true ;;
+        --upgrade)    UPGRADE=true ;;
         -h|--help)    awk 'NR>1 && /^#/ { sub(/^# ?/, ""); print; next } NR>1 { exit }' "$0"; exit 0 ;;
         -*)           printf "unknown flag '%s' — try --help\n" "$arg"; exit 1 ;;
         *)            PROFILE="$arg" ;;
@@ -99,8 +103,13 @@ do_packages() {
     fi
     # --verbose streams each package's progress; without it, brew's parallel
     # fetch phase sits silent for minutes on a big install
-    run brew bundle --verbose --file="$SCRIPT_DIR/Brewfile" || return 1
-    run brew bundle --verbose --file="$SCRIPT_DIR/Brewfile.$PROFILE" || return 1
+    local bundle_flags="--verbose"
+    if [ "$UPGRADE" = false ]; then
+        bundle_flags="$bundle_flags --no-upgrade"
+        info "installing missing packages only — pass --upgrade to also update installed ones"
+    fi
+    run brew bundle $bundle_flags --file="$SCRIPT_DIR/Brewfile" || return 1
+    run brew bundle $bundle_flags --file="$SCRIPT_DIR/Brewfile.$PROFILE" || return 1
 }
 
 do_dirs() { run mkdir -p "$HOME/Code" "$HOME/Desktop/screenshots"; }
