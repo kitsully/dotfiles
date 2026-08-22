@@ -17,9 +17,26 @@ cd ~/dotfiles
 ./setup.sh linux
 ```
 
+On macOS it also takes a **profile**, which selects the app set. The default is
+`personal`; a work machine wants `--work`:
+
+```bash
+./setup.sh mac            # core + Brewfile.personal
+./setup.sh mac --work     # core + Brewfile.work
+```
+
+See [Work Mode](#work-mode) for what the work profile leaves out and why.
+
 What it handles per platform:
 - **mac**: Xcode CLI tools, Homebrew, Brewfile packages, symlinks, VS Code extensions, FZF, iTerm2, macOS preferences
 - **linux**: Distro-native packages (Ubuntu, Fedora, RHEL/CentOS, Arch), standalone tool installs, symlinks, VS Code extensions
+
+### Profiles (macOS)
+
+| Flag | Installs |
+|------|----------|
+| `--personal` | `Brewfile` + `Brewfile.personal` (default) |
+| `--work` | `Brewfile` + `Brewfile.work` |
 
 ### Skipping Steps
 
@@ -66,6 +83,62 @@ If package installs are failing or you only need part of the setup, pass `--skip
 
 Flags can be combined freely — any step not explicitly skipped will still run.
 
+## Work Mode
+
+`./setup.sh mac --work` installs the core `Brewfile` plus `Brewfile.work`, and
+skips `Brewfile.personal` entirely. What it leaves off, and why:
+
+| Left off | Why |
+|----------|-----|
+| All 21 Mac App Store apps | `mas` installs require a **personal Apple ID signed into the machine**. Most employers prohibit this, and it ties personal purchases to a corporate device. |
+| Setapp, TextExpander, Keyboard Maestro, Hazel, Soulver, BBEdit, Sublime Text, Sublime Merge, Tower, Transmit | Personal licenses and subscriptions that generally do not cover commercial use. |
+| Day One, Evernote, Obsidian, Todoist, Fantastical | Personal notes, journals and calendars — data that should not sync onto a work device. |
+| Steam, Spotify, GarageBand, iMovie, Flighty, CARROT Weather | Non-work software; games in particular tend to violate acceptable-use policies. |
+| Docker Desktop | Requires a **paid business subscription** above a company-size threshold. `Brewfile.work` has commented alternatives (OrbStack, Colima, Podman) — pick whichever your employer licenses. |
+| Microsoft Word / Excel / PowerPoint | Work provisions Office through its own M365 tenant. |
+| ChatGPT, Claude desktop apps | Check your employer's approved-AI-tools policy first, then add to `Brewfile.work` if permitted. |
+| iMazing, SuperDuper | Personal iOS backups and disk cloning; cloning a managed work Mac is usually prohibited. |
+| GitHub Desktop, Microsoft Edge | Redundant with the `gh` CLI and the browsers already in core. |
+
+Everything genuinely needed for development stays in the core `Brewfile`: the
+whole CLI toolchain, fonts, 1Password, iTerm2, VS Code, IntelliJ, Postman,
+Raycast, Zoom, the JDK and the browsers.
+
+To move an app between profiles, just move its line between `Brewfile`,
+`Brewfile.personal` and `Brewfile.work` — nothing else references them by name.
+
+### Work Git Identity
+
+> **Required manual step on a work machine.** `./setup.sh --work` cannot do
+> this for you — it needs your work email, and the obvious command writes to
+> the wrong place.
+
+Work mode does **not** set a work git identity, because there is a trap here:
+`~/.gitconfig` and `~/.gitconfig.local` are both symlinks into this repo, so
+`git config --global user.email ...` edits tracked files — and this repo is
+pushed to GitHub. Set it up with an untracked file instead:
+
+```bash
+# 1. Work identity, kept outside the repo so it is never published
+cat > ~/.gitconfig.work <<'CONF'
+[user]
+	email = you@company.com
+	signingkey = ~/.ssh/work_signing_key.pub
+CONF
+```
+
+Then scope it to your work checkouts by adding to `git/.gitconfig`:
+
+```ini
+[includeIf "gitdir:~/Code/work/"]
+	path = ~/.gitconfig.work
+```
+
+Git applies the last matching value, so any repo under `~/Code/work/` uses the
+work address while everything else keeps the personal one. The `includeIf`
+line itself contains no private data and is safe to commit; `~/.gitconfig.work`
+stays untracked. Verify with `git config user.email` inside a work repo.
+
 ## Updating an Existing Machine
 
 After making changes on one machine, pull them down on another:
@@ -96,7 +169,9 @@ To verify everything is in order:
 
 | File / Dir | Purpose |
 |------------|---------|
-| `Brewfile` | Homebrew formulae, casks, fonts, and Mac App Store apps (macOS) |
+| `Brewfile` | Core Homebrew formulae, casks and fonts — installed on every Mac |
+| `Brewfile.personal` | Personal-only apps, licensed software and Mac App Store apps |
+| `Brewfile.work` | Work-machine additions (minimal; container runtime is opt-in) |
 | `linux/packages.sh` | Distro-native package install (Ubuntu, Fedora, RHEL, Arch) |
 | `setup.sh` | Main bootstrap script (run once on a fresh machine) |
 | `install.sh` | Creates symlinks — platform-aware for git and SSH configs |
@@ -205,3 +280,11 @@ The dotfiles are configured to use 1Password's SSH agent for both SSH auth *and*
 **Linux**
 - `npm install -g @anthropic-ai/claude-code`
 - Log out and back in for zsh to take effect
+
+**Work machines (required)**
+- Set a work git identity — see [Work Git Identity](#work-git-identity).
+  Without it, work commits are authored *and signed* with your personal
+  address, and `git config --global` writes into this repo rather than
+  your machine.
+- Sign into 1Password with your work account
+- Sign into Raycast with a work account, not your personal cloud sync

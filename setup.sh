@@ -12,6 +12,11 @@ usage() {
     echo "  mac     macOS setup"
     echo "  linux   Linux setup"
     echo ""
+    echo "Profiles (mac):"
+    echo "  --personal             Core + Brewfile.personal (default)"
+    echo "  --work                 Core + Brewfile.work — omits personal apps,"
+    echo "                         licensed software and all Mac App Store installs"
+    echo ""
     echo "Flags (mac):"
     echo "  --skip-installs        Shorthand: skips xcode, brew, packages, fzf"
     echo "  --skip-xcode           Xcode CLI tools + license accept"
@@ -47,6 +52,8 @@ else
     PLATFORM="linux"
 fi
 
+PROFILE=personal
+
 SKIP_XCODE=false
 SKIP_BREW=false
 SKIP_PACKAGES=false
@@ -60,6 +67,8 @@ SKIP_DOCTOR=false
 
 for arg in "$@"; do
     case "$arg" in
+        --work)                PROFILE=work ;;
+        --personal)            PROFILE=personal ;;
         --skip-installs)
             SKIP_XCODE=true; SKIP_BREW=true; SKIP_PACKAGES=true; SKIP_FZF=true ;;
         --skip-xcode)          SKIP_XCODE=true ;;
@@ -78,7 +87,7 @@ for arg in "$@"; do
     esac
 done
 
-echo "=== Workstation Setup ($PLATFORM) ==="
+echo "=== Workstation Setup ($PLATFORM, $PROFILE) ==="
 
 if [[ "$PLATFORM" == "mac" ]]; then
     # 1. Xcode CLI tools + license
@@ -107,8 +116,14 @@ if [[ "$PLATFORM" == "mac" ]]; then
 
     # 3. Brewfile packages
     if [[ "$SKIP_PACKAGES" == false ]]; then
-        echo "Installing packages from Brewfile..."
+        echo "Installing core packages..."
         brew bundle --file="$SCRIPT_DIR/Brewfile"
+
+        PROFILE_BREWFILE="$SCRIPT_DIR/Brewfile.$PROFILE"
+        if [ -f "$PROFILE_BREWFILE" ]; then
+            echo "Installing $PROFILE packages..."
+            brew bundle --file="$PROFILE_BREWFILE"
+        fi
     fi
 
 else
@@ -178,10 +193,25 @@ echo ""
 echo "=== Setup complete! ==="
 echo ""
 
-if [[ "$PLATFORM" == "mac" ]]; then
+if [[ "$PLATFORM" == "mac" && "$PROFILE" == "work" ]]; then
+    echo "Manual steps (work):"
+    echo "  1. Sign into 1Password with your WORK account and enable SSH agent"
+    echo "  2. Put your signing key at ~/.ssh/git_signing_key.pub"
+    echo "  3. Set a work git identity so commits are not authored with your"
+    echo "     personal address. Do NOT use 'git config --global' — ~/.gitconfig"
+    echo "     is a symlink into this repo. See 'Work Mode' in the README."
+    echo "  4. Sign into Raycast with a work account, not your personal sync"
+    echo "  5. Import iTerm2 profile from backup"
+    echo "  6. npm install -g @anthropic-ai/claude-code"
+    echo "  7. Restart terminal and verify: source ~/.zshrc"
+    echo ""
+    echo "Not installed in work mode: Mac App Store apps (no personal Apple ID"
+    echo "needed), personally-licensed software, and Docker Desktop."
+    echo "See Brewfile.work to opt in to a container runtime."
+elif [[ "$PLATFORM" == "mac" ]]; then
     echo "Manual steps:"
     echo "  1. Sign into 1Password and enable SSH agent"
-    echo "  2. Update signingkey in ~/.gitconfig with your SSH public key"
+    echo "  2. Put your signing key at ~/.ssh/git_signing_key.pub"
     echo "  3. Sign into iCloud / Mac App Store (required for mas installs)"
     echo "  4. Sign into Raycast for cloud sync (restores extensions + config)"
     echo "  5. Activate licenses: Keyboard Maestro, TextExpander, Setapp"
@@ -192,7 +222,7 @@ if [[ "$PLATFORM" == "mac" ]]; then
 else
     echo "Manual steps:"
     echo "  1. Install and configure 1Password with SSH agent"
-    echo "  2. Update signingkey in ~/.gitconfig with your SSH public key"
+    echo "  2. Put your signing key at ~/.ssh/git_signing_key.pub"
     echo "  3. npm install -g @anthropic-ai/claude-code"
     echo "  4. gh extension install github/gh-copilot (optional)"
     echo "  5. Log out and back in (or restart) for zsh to take effect"

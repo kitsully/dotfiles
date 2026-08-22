@@ -1,0 +1,24 @@
+# Work-machine packages — installed by: ./setup.sh mac --work
+#
+# Intentionally minimal. The core Brewfile already covers the toolchain;
+# this file is only for things a work machine needs that a personal one doesn't.
+#
+# Before adding anything here, check it against your employer's policy on
+# software licensing, approved AI tools, and data handling.
+
+# === Container runtime ===
+# Docker Desktop requires a paid business subscription above a company-size
+# threshold, so it is NOT installed by default at work. Uncomment whichever
+# your employer licenses or permits:
+# cask "docker-desktop"       # only if your employer has Docker Business seats
+# cask "orbstack"             # free for personal use; paid for commercial
+# brew "colima"               # open source, no per-seat licensing
+# brew "podman"               # open source, no per-seat licensing
+
+# === Commonly needed at work ===
+# Most orgs push these through MDM (Jamf/Intune/Kandji) rather than Homebrew.
+# Install via brew only if IT does not deploy them for you:
+# cask "slack"
+# cask "microsoft-teams"
+# cask "microsoft-outlook"
+# cask "google-drive"
