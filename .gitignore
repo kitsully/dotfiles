@@ -1,2 +1,19 @@
 .DS_Store
 *.bak
+
+# Never commit credentials
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+id_ecdsa*
+id_dsa*
+!*.pub
+.env
+.env.*
+*.token
+*credentials*
+*secret*
+.netrc
