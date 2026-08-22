@@ -117,7 +117,7 @@ check "code on PATH" "VS Code's terminal command is missing, so extensions canno
 # The list comes from `install.sh --list` — nothing to maintain here.
 printf "\n%sConfig symlinks%s  %s(editing these edits the repo — that is the point)%s\n" "$BOLD" "$RESET" "$DIM" "$RESET"
 while IFS="$TAB" read -r src dst; do
-    short="${dst/#$HOME/\~}"
+    short="~${dst#"$HOME"}"   # not ${dst/#$HOME/\~}: bash 3.2 keeps the backslash
     if [ -L "$dst" ]; then
         pass_line "$short"
     elif [ -e "$dst" ]; then

@@ -39,17 +39,18 @@ link() {
             "$DOTFILES"/*) rm "$dst" ;;
             *) local bak="$dst.bak"
                [ -e "$bak" ] || [ -L "$bak" ] && bak="$dst.bak.$(date +%Y%m%d%H%M%S)"
-               printf "  %s↷ backed up %s → %s%s\n" "$YELLOW" "${dst/#$HOME/\~}" "${bak/#$HOME/\~}" "$RESET"
+               printf "  %s↷ backed up %s → %s%s\n" "$YELLOW" "~${dst#"$HOME"}" "~${bak#"$HOME"}" "$RESET"
                mv "$dst" "$bak"; BACKED=$((BACKED+1)) ;;
         esac
     elif [ -e "$dst" ]; then
         local bak="$dst.bak"
         [ -e "$bak" ] && bak="$dst.bak.$(date +%Y%m%d%H%M%S)"
-        printf "  %s↷ backed up %s → %s%s\n" "$YELLOW" "${dst/#$HOME/\~}" "${bak/#$HOME/\~}" "$RESET"
+        # not ${dst/#$HOME/\~}: bash 3.2 keeps the backslash and prints '\~'
+        printf "  %s↷ backed up %s → %s%s\n" "$YELLOW" "~${dst#"$HOME"}" "~${bak#"$HOME"}" "$RESET"
         mv "$dst" "$bak"; BACKED=$((BACKED+1))
     fi
     ln -s "$src" "$dst"
-    printf "  %s✓%s %-52s %s→ %s%s\n" "$GREEN" "$RESET" "${dst/#$HOME/\~}" "$DIM" "${src#"$DOTFILES"/}" "$RESET"
+    printf "  %s✓%s %-52s %s→ %s%s\n" "$GREEN" "$RESET" "~${dst#"$HOME"}" "$DIM" "${src#"$DOTFILES"/}" "$RESET"
     LINKED=$((LINKED+1))
 }
 
