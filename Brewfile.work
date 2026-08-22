@@ -6,6 +6,10 @@
 # Before adding anything here, check it against your employer's policy on
 # software licensing, approved AI tools, and data handling.
 
+# Adopt same-version apps MDM already installed instead of erroring
+# (cask_args is per-file, so this repeats here from the core Brewfile).
+cask_args adopt: true
+
 # === Container runtime ===
 # Docker Desktop requires a paid business subscription above a company-size
 # threshold, so it is NOT installed by default at work. Uncomment whichever

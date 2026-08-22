@@ -3,6 +3,12 @@
 # Profile-specific additions live in Brewfile.personal / Brewfile.work.
 # setup.sh installs this file first, then the profile file.
 
+# On a managed (MDM) work Mac some of these apps may already be installed.
+# adopt makes brew take ownership of a same-version copy instead of erroring;
+# if MDM's version differs it still refuses — for those, let MDM own the app
+# and remove its line here.
+cask_args adopt: true
+
 # === CLI Tools ===
 brew "atuin"
 brew "awscli"
