@@ -1,7 +1,7 @@
 [user]
 	name = kitsully
 	email = kris@kristophersullivan.com
-	signingkey = ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAuzvbNzyaj0ZfHeIi5fqq20frVrxDFOEFjhe09Eh7Lh
+	signingkey = ~/.ssh/git_signing_key.pub
 
 [gpg]
 	format = ssh
@@ -51,3 +51,6 @@
 
 [include]
 	path = ~/.gitconfig.local
+
+[gpg "ssh"]
+	allowedSignersFile = ~/.ssh/allowed_signers
