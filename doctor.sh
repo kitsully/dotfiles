@@ -157,6 +157,9 @@ if [ "$OS" = Darwin ]; then
         -- test -S "$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
     check "iTerm2 integration" "iTerm2's extras (marks, command history) will not work." \
         "Run ./setup.sh" -- test -f "$HOME/.iterm2_shell_integration.zsh"
+    check "iTerm2 default profile" "New iTerm2 windows use the stock profile, not the dotfiles one." \
+        "Quit iTerm2 and run ./setup.sh, or: iTerm2 > Settings > Profiles > Dotfiles > Other Actions > Set as Default." \
+        -- test "$(defaults read com.googlecode.iterm2 'Default Bookmark Guid' 2>/dev/null)" = "$(jq -r '.Profiles[0].Guid // empty' "$SCRIPT_DIR/iterm2/Default.json" 2>/dev/null)"
     soft "Touch ID for sudo" "sudo asks for a typed password instead of a fingerprint." \
         "Run ./setup.sh — the macOS preferences step sets it up." \
         -- grep -q '^auth' /etc/pam.d/sudo_local

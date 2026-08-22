@@ -289,7 +289,7 @@ do_fzf() {
 
 do_iterm2() {
     # always refreshed, so updates to the script are picked up on re-runs
-    if [ "$DRY_RUN" = true ]; then info "would refresh ~/.iterm2_shell_integration.zsh"; return 0; fi
+    if [ "$DRY_RUN" = true ]; then info "would refresh ~/.iterm2_shell_integration.zsh and set the default profile"; return 0; fi
     local tmp="$HOME/.iterm2_shell_integration.zsh.new"
     if curl -fsSL https://iterm2.com/shell_integration/zsh -o "$tmp" 2>/dev/null; then
         mv "$tmp" "$HOME/.iterm2_shell_integration.zsh"
@@ -298,6 +298,21 @@ do_iterm2() {
         rm -f "$tmp"
         warn "could not download (offline?) — keeping the existing copy"
         [ -f "$HOME/.iterm2_shell_integration.zsh" ] || return 1
+    fi
+    # The dynamic profile (linked by the symlinks step) only ADDS a profile
+    # to iTerm2's list — iTerm2 keeps its stock one as the default. Point
+    # the default at ours, or new windows keep the stock look.
+    local guid
+    guid="$(jq -r '.Profiles[0].Guid // empty' "$SCRIPT_DIR/iterm2/Default.json" 2>/dev/null)"
+    [ -z "$guid" ] && { warn "could not read the profile Guid from iterm2/Default.json (jq missing?) — skipping default-profile setup"; return 0; }
+    if [ "$(defaults read com.googlecode.iterm2 "Default Bookmark Guid" 2>/dev/null)" = "$guid" ]; then
+        ok "already the default profile"
+    elif pgrep -xq iTerm2; then
+        # a running iTerm2 rewrites its prefs on quit, clobbering this edit
+        warn "iTerm2 is running — quit it and re-run ./setup.sh to make the dotfiles profile the default (or: iTerm2 > Settings > Profiles > Dotfiles > Other Actions > Set as Default)"
+    else
+        defaults write com.googlecode.iterm2 "Default Bookmark Guid" -string "$guid"
+        ok "dotfiles profile set as the default"
     fi
 }
 
