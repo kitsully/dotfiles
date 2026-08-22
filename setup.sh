@@ -97,8 +97,10 @@ do_packages() {
         fi
         return 0
     fi
-    run brew bundle --file="$SCRIPT_DIR/Brewfile" || return 1
-    run brew bundle --file="$SCRIPT_DIR/Brewfile.$PROFILE" || return 1
+    # --verbose streams each package's progress; without it, brew's parallel
+    # fetch phase sits silent for minutes on a big install
+    run brew bundle --verbose --file="$SCRIPT_DIR/Brewfile" || return 1
+    run brew bundle --verbose --file="$SCRIPT_DIR/Brewfile.$PROFILE" || return 1
 }
 
 do_dirs() { run mkdir -p "$HOME/Code" "$HOME/Desktop/screenshots"; }
@@ -118,6 +120,7 @@ do_vscode() {
     while IFS= read -r ext; do
         [ -z "$ext" ] && continue
         n=$((n+1))
+        info "$ext"
         [ "$DRY_RUN" = true ] || code --install-extension "$ext" --force >/dev/null 2>&1
     done < "$SCRIPT_DIR/vscode/extensions.txt"
     if [ "$DRY_RUN" = true ]; then info "would install $n extensions from vscode/extensions.txt"
