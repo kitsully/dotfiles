@@ -127,9 +127,9 @@ skips `Brewfile.personal` entirely. What it leaves off, and why:
 | Left off | Why |
 |----------|-----|
 | 19 of the 21 Mac App Store apps | Personal purchases that should not follow you onto a corporate device. Note that Drafts and Amphetamine *are* in core, so a work Mac still needs an Apple ID signed in for `mas` to run. |
-| Setapp, Soulver, BBEdit, Sublime Text, Sublime Merge | Personal licenses and subscriptions that generally do not cover commercial use. |
+| Setapp, Soulver, Sublime Text, Sublime Merge | Personal licenses and subscriptions that generally do not cover commercial use. |
 | Day One, Evernote, Todoist, Fantastical | Personal notes, journals and calendars — data that should not sync onto a work device. |
-| Steam, Spotify, GarageBand, iMovie, Flighty, CARROT Weather | Non-work software; games in particular tend to violate acceptable-use policies. |
+| Spotify, GarageBand, iMovie, Flighty, CARROT Weather | Non-work software. |
 | Docker Desktop | Requires a **paid business subscription** above a company-size threshold. `Brewfile.work` has commented alternatives (OrbStack, Colima, Podman) — pick whichever your employer licenses. |
 | ChatGPT, Claude desktop apps | Check your employer's approved-AI-tools policy first, then add to `Brewfile.work` if permitted. |
 | iMazing, SuperDuper | Personal iOS backups and disk cloning; cloning a managed work Mac is usually prohibited. |
@@ -138,7 +138,7 @@ skips `Brewfile.personal` entirely. What it leaves off, and why:
 Everything needed on both machines stays in the core `Brewfile`: the whole CLI
 toolchain, fonts, 1Password, iTerm2, VS Code, IntelliJ, Postman, Raycast, Zoom,
 the JDK and the browsers, plus Office, Obsidian, Keyboard Maestro, TextExpander,
-Hazel, Tower, Transmit, Drafts and Amphetamine.
+Hazel, Tower, Transmit, BBEdit, Steam, Drafts and Amphetamine.
 
 To move an app between profiles, just move its line between `Brewfile`,
 `Brewfile.personal` and `Brewfile.work` — nothing else references them by name.
