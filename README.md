@@ -15,7 +15,8 @@ cd ~/dotfiles
 ./setup.sh <profile>     # e.g. ./setup.sh personal — see Profiles below
 ```
 
-Three scripts, no menus, no prompts:
+Three scripts, no menus — the only questions are first-run ones (profile,
+and on Linux headless-or-not), whose answers are recorded and never asked again:
 
 | Script | Does | When |
 |--------|------|------|
@@ -29,10 +30,12 @@ Everything is safe to re-run. `--dry-run` works on `setup.sh` and `sync.sh`.
 ## Profiles
 
 A profile names a kind of machine and picks its app set: the core `Brewfile`
-(every Mac) plus `Brewfile.<profile>` (that kind only). **Any
-`Brewfile.<name>` file in the repo is a valid profile** — a new kind of
-machine means creating one file and running `./setup.sh <name>`. Nothing else
-knows the profile names.
+(every Mac) plus `Brewfile.<profile>` (that kind only); on Linux the same
+name picks `linux/apps.txt` plus `linux/apps.<profile>.txt` (Flathub desktop
+apps). **Any `Brewfile.<name>` file in the repo is a valid profile** — a new
+kind of machine means creating one file and running `./setup.sh <name>`.
+Nothing else knows the profile names. Run setup with no argument at a
+terminal and it asks.
 
 The first `./setup.sh <profile>` records the choice in
 `~/.config/dotfiles/profile`; from then on `setup.sh`, `sync.sh` and
@@ -83,6 +86,9 @@ Each of these is also answered by a comment in the file you would edit.
 | `macos-defaults.sh` | macOS system preferences (dock, keyboard, Finder…) |
 | `dock/<profile>.txt` | Dock layout per profile: one app name per line, in order; `setup.sh --dock` applies it with `dockutil` (opt-in) |
 | `linux/packages.sh` | Distro-native packages: Ubuntu/Debian, Fedora, RHEL, Arch |
+| `linux/packages.<profile>.sh` | Profile-specific CLI tools (doctl, heroku, …) — the Linux analogue of `Brewfile.<profile>`'s CLI section |
+| `linux/apps.txt`, `linux/apps.<profile>.txt` | Desktop apps per profile: one Flathub app ID per line; skipped on headless machines |
+| `linux/apps.sh` | Installs those via Flatpak (installs flatpak itself first if needed) |
 | `zsh/`, `git/`, `ssh/`, `config/`, `iterm2/`, `vscode/` | The actual configs |
 
 Notes on two of the configs:
@@ -133,7 +139,11 @@ keeps the personal one. Verify with `git config user.email` inside a work repo.
 The manual follow-ups `setup.sh` cannot do:
 
 **Every machine**
-1. Sign into 1Password and enable Settings → Developer → "Use the SSH agent".
+1. Sign into 1Password, then re-run `./setup.sh` — it flips the SSH-agent
+   toggle for you (macOS: by editing 1Password's unofficial settings.json with
+   the app closed, keeping a `.bak`; the step verifies the agent socket
+   appears). If that ever breaks after a 1Password update, enable
+   Settings → Developer → "Use the SSH agent" by hand.
 2. Store or import your SSH key in 1Password; add the public key to GitHub as
    both an **authentication** and a **signing** key.
 3. Check the tracked public key still matches the agent's (`ssh-add -L` vs
@@ -167,5 +177,22 @@ The manual follow-ups `setup.sh` cannot do:
 `setup.sh` detects the platform with `uname`; on Linux it runs
 `linux/packages.sh`, which reads `/etc/os-release` and uses `apt`
 (Ubuntu/Debian), `dnf` (Fedora/RHEL) or `pacman` (Arch). Tools not in distro
-repos (mise, atuin, zoxide, gh) install via their official scripts. Profiles
-are a Mac concept; Linux machines share one package list.
+repos (mise, atuin, zoxide, gh) install via their official scripts.
+
+Profiles work the same as on a Mac: `./setup.sh <profile>` (or answer the
+prompt on the first run). The profile picks both halves of the app set:
+
+- **CLI tools** — the shared list in `linux/packages.sh`, then
+  `linux/packages.<profile>.sh` (a script, not a list, because profile
+  tools like doctl and heroku are mostly not in distro repos and each
+  brings its own install recipe).
+- **Desktop apps** — `linux/apps.txt` (every desktop machine) plus
+  `linux/apps.<profile>.txt` (that kind only), installed from Flathub as
+  per-user flatpaks (no sudo).
+
+Linux machines also have a headless/desktop axis. The first run asks
+"headless?" with a default guessed from whether a display is present (off a
+terminal, the guess just applies), and records the answer in
+`~/.config/dotfiles/headless`; headless machines skip the desktop-apps step
+entirely. Override any time with `./setup.sh --headless` or
+`./setup.sh --desktop` — the new answer is remembered.

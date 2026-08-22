@@ -4,9 +4,16 @@ set -euo pipefail
 # Shared packages across distros (mapped to distro-specific names where needed)
 # Covers: Ubuntu/Debian (apt), Fedora (dnf), RHEL/CentOS (dnf), Arch (pacman)
 #
+# Usage: packages.sh [profile]. The core list below installs everywhere;
+# profile-specific CLI tools live in packages.<profile>.sh (the Linux
+# analogue of Brewfile.<profile>'s CLI section) and run at the end.
+#
 # Language runtimes (node, python, go) are deliberately NOT here — mise
 # installs them from config/mise/config.toml in the Runtimes setup step.
 # python3 stays: it is base-system on these distros and scripts expect it.
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROFILE="${1:-}"
 
 detect_distro() {
     if [ -f /etc/os-release ]; then
@@ -232,6 +239,16 @@ case "$DISTRO" in
 esac
 
 install_standalone_tools
+
+# Profile-specific CLI tools. A shell hook rather than a package list on
+# purpose: these tools (doctl, heroku, …) are mostly not in distro repos,
+# so each brings its own install recipe. A new kind of machine just needs
+# a new packages.<name>.sh next to this file.
+if [ -n "$PROFILE" ] && [ -f "$SCRIPT_DIR/packages.$PROFILE.sh" ]; then
+    echo ""
+    echo "── profile packages ($PROFILE)"
+    bash "$SCRIPT_DIR/packages.$PROFILE.sh"
+fi
 
 echo ""
 echo "Linux packages installed."

@@ -1,0 +1,19 @@
+# Core desktop apps — every Linux desktop machine, work or personal.
+# The Linux analogue of the core Brewfile's cask sections: one Flathub app
+# ID per line (find IDs at https://flathub.org). Profile-specific additions
+# live in apps.personal.txt / apps.work.txt. Headless machines skip all of
+# this — setup.sh asks once and remembers.
+#
+# Casks with no Linux build have no line here: iTerm2, Raycast, Hazel,
+# BBEdit, Claude, Tower, Transmit, TextExpander, Elgato Stream Deck,
+# Microsoft Office. 1Password ships a native .deb/.rpm, not a flatpak —
+# install it from https://1password.com/downloads/linux if needed.
+
+org.mozilla.firefox
+com.google.Chrome
+com.microsoft.Edge
+md.obsidian.Obsidian
+com.visualstudio.code
+com.jetbrains.IntelliJ-IDEA-Ultimate
+com.getpostman.Postman
+us.zoom.Zoom

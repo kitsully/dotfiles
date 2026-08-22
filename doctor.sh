@@ -153,7 +153,7 @@ check "signing key file exists" "user.signingkey points at a file that is not on
 printf "\n%s%s extras%s\n" "$BOLD" "$([ "$OS" = Darwin ] && echo Mac || echo Linux)" "$RESET"
 if [ "$OS" = Darwin ]; then
     check "1Password SSH agent" "1Password is not serving your SSH keys, so git push and ssh will not authenticate." \
-        "Open 1Password > Settings > Developer and turn on 'Use the SSH agent'." \
+        "Run ./setup.sh (it flips the toggle, once you have signed in and unlocked), or turn on 1Password > Settings > Developer > 'Use the SSH agent'." \
         -- test -S "$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
     check "iTerm2 integration" "iTerm2's extras (marks, command history) will not work." \
         "Run ./setup.sh" -- test -f "$HOME/.iterm2_shell_integration.zsh"

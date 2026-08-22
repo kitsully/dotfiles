@@ -1,0 +1,8 @@
+# Work-machine desktop apps — installed by: ./setup.sh work
+#
+# Intentionally minimal, like Brewfile.work: the core apps.txt already
+# covers the toolchain, and most orgs push chat/meeting apps through
+# management tooling. Uncomment what IT does not deploy for you — and check
+# it against your employer's policy first:
+# com.slack.Slack
+# com.microsoft.Teams

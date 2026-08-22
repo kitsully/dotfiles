@@ -1,0 +1,10 @@
+# Personal-machine desktop apps — installed by: ./setup.sh personal
+# Same reasoning as Brewfile.personal: personal licenses, subscriptions,
+# and things that don't belong on a work device.
+#
+# Mac-only personal casks (AirBuddy, iMazing, Keyboard Maestro, Setapp,
+# Soulver, SuperDuper) have no Linux build and no line here.
+
+com.spotify.Client
+com.valvesoftware.Steam              # games — usually against corporate acceptable-use policy
+com.sublimetext.three                # personal license; redundant editor
