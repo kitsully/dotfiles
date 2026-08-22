@@ -167,7 +167,11 @@ if [ "$PLATFORM" = mac ] && [ "$DRY_RUN" = false ] && [ -t 0 ]; then
     printf '#!/bin/sh\nexec cat "%s"\n' "$ASKPASS_DIR/pw" > "$ASKPASS_DIR/askpass"
     chmod 700 "$ASKPASS_DIR/askpass"
     export SUDO_ASKPASS="$ASKPASS_DIR/askpass"
-    ( while kill -0 $$ 2>/dev/null; do sudo -n true 2>/dev/null; sleep 50; done ) &
+    # -A -v (not -n true): the Homebrew installer and brew's cask pkg
+    # installers deliberately wipe sudo's timestamp (`sudo -k`) when they
+    # finish, and -n can only refresh a still-valid one. -A re-authenticates
+    # through the askpass helper, so the cache heals itself within a tick.
+    ( while kill -0 $$ 2>/dev/null; do sudo -A -v 2>/dev/null; sleep 30; done ) &
 fi
 
 # ── Steps ───────────────────────────────────────────────────────────────
@@ -185,7 +189,7 @@ do_xcode() {
     done
     if command -v xcodebuild >/dev/null 2>&1 && ! xcodebuild -checkFirstLaunchStatus >/dev/null 2>&1; then
         info "accepting the Xcode license (needs your password)"
-        sudo xcodebuild -license accept || return 1
+        sudo ${SUDO_ASKPASS:+-A} xcodebuild -license accept || return 1
     fi
 }
 

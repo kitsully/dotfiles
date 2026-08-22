@@ -54,14 +54,18 @@ defaults write com.apple.screencapture type -string "png"
 ok "Screenshots — PNGs into ~/Desktop/screenshots"
 
 # === Security ===
-if [ -t 0 ]; then
-    sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate on >/dev/null
+# ${SUDO_ASKPASS:+-A}: when setup.sh stored the password, answer with it
+# instead of prompting — the Homebrew installer (the step right before this
+# one) wipes sudo's timestamp cache on exit, so a plain sudo here would ask
+# again even though the password was just typed.
+if [ -t 0 ] || [ -n "${SUDO_ASKPASS:-}" ]; then
+    sudo ${SUDO_ASKPASS:+-A} /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate on >/dev/null
     ok "Firewall — on"
 
     # Touch ID for sudo: fingerprint instead of a typed password.
     # /etc/pam.d/sudo_local is Apple's hook for this and survives OS updates.
     if [ -f /etc/pam.d/sudo_local.template ] && ! grep -q '^auth' /etc/pam.d/sudo_local 2>/dev/null; then
-        sed 's/^#auth/auth/' /etc/pam.d/sudo_local.template | sudo tee /etc/pam.d/sudo_local >/dev/null \
+        sed 's/^#auth/auth/' /etc/pam.d/sudo_local.template | sudo ${SUDO_ASKPASS:+-A} tee /etc/pam.d/sudo_local >/dev/null \
             && ok "Touch ID for sudo — enabled"
     else
         ok "Touch ID for sudo — already enabled"
