@@ -292,11 +292,38 @@ do_dock() {
 do_doctor() { run bash "$SCRIPT_DIR/doctor.sh"; return 0; }
 
 # ── Run ─────────────────────────────────────────────────────────────────
-FAILED=""
-step() {
-    printf "\n%s▸ %s%s\n" "$BOLD" "$1" "$RESET"
-    "$2" || { FAILED="$FAILED$1, "; printf "  %s✗ %s failed — continuing%s\n" "$RED" "$1" "$RESET"; }
+fmt_secs() { if [ "$1" -ge 60 ]; then printf '%dm%02ds' $(($1/60)) $(($1%60)); else printf '%ds' "$1"; fi; }
+
+# Steps are collected first so each one can show its place in the whole run.
+STEPS=()
+# ${STEPS[@]+...}: bash 3.2 + set -u treat expanding an empty array as unbound
+step() { STEPS=(${STEPS[@]+"${STEPS[@]}"} "$1|$2"); }
+
+run_steps() {
+    local total=${#STEPS[@]} i=0 s title fn t0
+    FAILED=""
+    for s in "${STEPS[@]}"; do
+        title="${s%|*}"; fn="${s#*|}"; i=$((i+1))
+        printf "\n%s▸ %s%s  %s[%d/%d]%s\n" "$BOLD" "$title" "$RESET" "$DIM" "$i" "$total" "$RESET"
+        t0=$SECONDS
+        if "$fn"; then
+            printf "  %s✓ done in %s%s\n" "$DIM" "$(fmt_secs $((SECONDS-t0)))" "$RESET"
+        else
+            FAILED="$FAILED$title, "
+            printf "  %s✗ %s failed after %s — continuing%s\n" "$RED" "$title" "$(fmt_secs $((SECONDS-t0)))" "$RESET"
+        fi
+    done
 }
+
+# ── The run itself ──────────────────────────────────────────────────────
+printf "\n%s┌─ dotfiles %s%s\n" "$BOLD" "$([ "$DRY_RUN" = true ] && echo "setup (dry run)" || echo setup)" "$RESET"
+if [ "$PLATFORM" = mac ]; then
+    printf "%s│%s  %s%s · profile %s · %s%s\n" "$BOLD" "$RESET" "$DIM" "$(scutil --get ComputerName 2>/dev/null || hostname)" "$PROFILE" \
+        "$([ "$UPGRADE" = true ] && echo "install + upgrade" || echo "install missing only")" "$RESET"
+else
+    printf "%s│%s  %s%s · linux%s\n" "$BOLD" "$RESET" "$DIM" "$(hostname)" "$RESET"
+fi
+printf "%s└─%s\n" "$BOLD" "$RESET"
 
 # To skip a step for one run, comment out its line.
 if [ "$PLATFORM" = mac ]; then
@@ -324,13 +351,19 @@ else
     step "Health check"                    do_doctor
 fi
 
+run_steps
+
 # ── Summary ─────────────────────────────────────────────────────────────
+TOTAL_TIME="$(fmt_secs $SECONDS)"
 printf "\n"
 if [ -n "$FAILED" ]; then
-    printf "%s%s✗ Failed:%s %s\n" "$BOLD" "$RED" "$RESET" "${FAILED%, }"
+    printf "%s%s✗ %d of %d steps failed%s %s(%s)%s\n" "$BOLD" "$RED" \
+        "$(printf '%s' "$FAILED" | awk -F', ' '{print NF-1}')" "${#STEPS[@]}" "$RESET" "$DIM" "$TOTAL_TIME" "$RESET"
+    printf "  %s· %s%s\n" "$RED" "${FAILED%, }" "$RESET"
     info "each error is printed above, at the end of its '▸ <step>' section"
     info "fix the cause and re-run ./setup.sh — finished steps repeat harmlessly"
     exit 1
 fi
-if [ "$DRY_RUN" = true ]; then info "dry run — nothing was changed"; exit 0; fi
-ok "Done. Manual follow-ups (sign-ins, licenses): see Post-Setup in README.md."
+if [ "$DRY_RUN" = true ]; then info "dry run — nothing was changed ($TOTAL_TIME)"; exit 0; fi
+printf "  %s%s✓ All %d steps done in %s.%s\n" "$BOLD" "$GREEN" "${#STEPS[@]}" "$TOTAL_TIME" "$RESET"
+info "manual follow-ups (sign-ins, licenses): see Post-Setup in README.md"

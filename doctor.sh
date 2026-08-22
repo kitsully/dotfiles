@@ -78,6 +78,10 @@ check_bundle() { # label  brewfile — a failure names exactly what is missing
 PROFILE=""
 [ -f "$HOME/.config/dotfiles/profile" ] && PROFILE="$(cat "$HOME/.config/dotfiles/profile")"
 
+printf "\n%s┌─ dotfiles doctor%s\n" "$BOLD" "$RESET"
+printf "%s│%s  %sreport only — ./setup.sh fixes%s\n" "$BOLD" "$RESET" "$DIM" "$RESET"
+printf "%s└─%s\n" "$BOLD" "$RESET"
+
 # ── Packages ────────────────────────────────────────────────────────────
 # Checked straight against the Brewfiles: add a package there, it is
 # checked here automatically.
@@ -113,7 +117,7 @@ check "code on PATH" "VS Code's terminal command is missing, so extensions canno
 # The list comes from `install.sh --list` — nothing to maintain here.
 printf "\n%sConfig symlinks%s  %s(editing these edits the repo — that is the point)%s\n" "$BOLD" "$RESET" "$DIM" "$RESET"
 while IFS="$TAB" read -r src dst; do
-    short="${dst/#$HOME/~}"
+    short="${dst/#$HOME/\~}"
     if [ -L "$dst" ]; then
         pass_line "$short"
     elif [ -e "$dst" ]; then

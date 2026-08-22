@@ -78,6 +78,13 @@ if [ "$(uname)" = Darwin ]; then
     fi
 fi
 
+printf "\n%s┌─ dotfiles %s%s\n" "$BOLD" "$([ "$DRY_RUN" = true ] && echo "sync (dry run)" || echo sync)" "$RESET"
+printf "%s│%s  %smachine → repo, additions only · " "$BOLD" "$RESET" "$DIM"
+if [ "$DRY_RUN" = true ]; then printf "reporting drift, changing nothing%s\n" "$RESET"
+elif [ "$ASSUME_YES" = true ]; then printf "writing without asking (--yes)%s\n" "$RESET"
+else printf "asks before each write%s\n" "$RESET"; fi
+printf "%s└─%s\n" "$BOLD" "$RESET"
+
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-sync.XXXXXX")" || exit 1
 trap 'rm -rf "$TMP"' EXIT INT TERM
 

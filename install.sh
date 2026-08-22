@@ -20,6 +20,14 @@ OS="$(uname)"
 LIST_ONLY=false
 [ "${1:-}" = "--list" ] && LIST_ONLY=true
 
+if [ -t 1 ] && command -v tput >/dev/null 2>&1; then
+    BOLD="$(tput bold)"; DIM="$(tput dim)"; GREEN="$(tput setaf 2)"
+    YELLOW="$(tput setaf 3)"; RESET="$(tput sgr0)"
+else
+    BOLD=""; DIM=""; GREEN=""; YELLOW=""; RESET=""
+fi
+
+LINKED=0; BACKED=0
 link() {
     local src="$1" dst="$2"
     if [ "$LIST_ONLY" = true ]; then printf '%s\t%s\n' "$src" "$dst"; return 0; fi
@@ -31,17 +39,18 @@ link() {
             "$DOTFILES"/*) rm "$dst" ;;
             *) local bak="$dst.bak"
                [ -e "$bak" ] || [ -L "$bak" ] && bak="$dst.bak.$(date +%Y%m%d%H%M%S)"
-               echo "  backing up $dst -> $bak"
-               mv "$dst" "$bak" ;;
+               printf "  %s↷ backed up %s → %s%s\n" "$YELLOW" "${dst/#$HOME/\~}" "${bak/#$HOME/\~}" "$RESET"
+               mv "$dst" "$bak"; BACKED=$((BACKED+1)) ;;
         esac
     elif [ -e "$dst" ]; then
         local bak="$dst.bak"
         [ -e "$bak" ] && bak="$dst.bak.$(date +%Y%m%d%H%M%S)"
-        echo "  backing up $dst -> $bak"
-        mv "$dst" "$bak"
+        printf "  %s↷ backed up %s → %s%s\n" "$YELLOW" "${dst/#$HOME/\~}" "${bak/#$HOME/\~}" "$RESET"
+        mv "$dst" "$bak"; BACKED=$((BACKED+1))
     fi
     ln -s "$src" "$dst"
-    echo "  $dst -> $src"
+    printf "  %s✓%s %-52s %s→ %s%s\n" "$GREEN" "$RESET" "${dst/#$HOME/\~}" "$DIM" "${src#"$DOTFILES"/}" "$RESET"
+    LINKED=$((LINKED+1))
 }
 
 # ssh refuses configs in a directory other users can touch — create it tight
@@ -70,8 +79,15 @@ else
 fi
 
 # ── Everything under config/ mirrors into ~/.config/ — nothing to edit ───
-find "$DOTFILES/config" -type f | sort | while IFS= read -r f; do
+while IFS= read -r f; do
     link "$f" "$HOME/.config/${f#"$DOTFILES"/config/}"
-done
+done < <(find "$DOTFILES/config" -type f | sort)
 
-[ "$LIST_ONLY" = true ] || echo "Done."
+if [ "$LIST_ONLY" = false ]; then
+    if [ "$BACKED" -gt 0 ]; then
+        printf "%s✓ %d links in place%s %s(%d existing files backed up — remove the .bak copies once you trust the links)%s\n" \
+            "$GREEN" "$LINKED" "$RESET" "$DIM" "$BACKED" "$RESET"
+    else
+        printf "%s✓ %d links in place%s\n" "$GREEN" "$LINKED" "$RESET"
+    fi
+fi
