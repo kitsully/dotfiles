@@ -65,7 +65,6 @@ cask "tower"
 cask "transmit"
 cask "visual-studio-code"
 cask "zoom"
-cask "zulu@21"
 
 # === Mac App Store ===
 # Requires an Apple ID signed into the machine, including on work Macs.

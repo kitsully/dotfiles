@@ -3,6 +3,7 @@
 # project can override with its own .mise.toml.
 [tools]
 go = "1.26"
+java = "zulu-21"
 node = "24"
 "npm:@modelcontextprotocol/server-filesystem" = "latest"
 "npm:ccusage" = "latest"
