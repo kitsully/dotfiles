@@ -20,9 +20,12 @@ cask_args adopt: true
 # brew "podman"               # open source, no per-seat licensing
 
 # === Commonly needed at work ===
+cask "cloudflare-warp"
+cask "microsoft-teams"
+cask "slack"
+cask "webex"
+
 # Most orgs push these through MDM (Jamf/Intune/Kandji) rather than Homebrew.
 # Install via brew only if IT does not deploy them for you:
-# cask "slack"
-# cask "microsoft-teams"
 # cask "microsoft-outlook"
 # cask "google-drive"
