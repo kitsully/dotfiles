@@ -1,0 +1,25 @@
+# Repos cloned on every machine by ./clone-repos.sh (into ~/Code by default).
+# One per line, in any GitHub notation — ssh, https, or owner/repo shorthand:
+#
+#   git@github.com:owner/repo.git
+#   https://github.com/owner/repo
+#   owner/repo
+#
+# Group repos into directories YAML-style: a "name:" heading opens a
+# directory, indented repos under it clone there, and headings nest to any
+# depth — the ":" is what makes a heading, so a repo (which never ends in
+# one) can't be mistaken for a directory. A top-level heading is a
+# subdirectory of ~/Code; ~/… and absolute paths root their own tree:
+#
+#   cli/cli                   -> ~/Code/cli
+#   work:
+#     acme/api                -> ~/Code/work/api
+#     clients:
+#       acme/webapp           -> ~/Code/work/clients/webapp
+#   ~/somewhere:
+#     owner/other             -> ~/somewhere/other
+#
+# Trailing "# comments" are fine too. Full format: bin/outline --help.
+#
+# Machine-specific repos go in repos/<profile>.txt instead (same profile
+# names as the Brewfile.<name> files).

@@ -1,0 +1,181 @@
+#!/bin/bash
+# Parse indented outlines of path headings and items into flat lines:
+#
+#   outline [file...]           read files (or stdin) and print, per item,
+#                               its heading path, a TAB, and the item
+#   outline --leaf <regex>      lines matching regex are always items, even
+#                               with a trailing ":"
+#   outline --mkdir             create directories instead of printing:
+#                               every line, heading or item, is a directory
+#   outline --root <dir>        with --mkdir: create relative paths under
+#                               <dir> (default: the current directory)
+#   outline --dry-run           with --mkdir: say what would be created
+#
+# The format, YAML-flavored: a heading is a line ending in ":", and the
+# items indented under it carry its path. Headings nest by indenting, to
+# any depth; unindented items have an empty path:
+#
+#   top-item                    ->  <TAB>top-item
+#   work:
+#     item-a                    ->  work<TAB>item-a
+#     clients:
+#       item-b                  ->  work/clients<TAB>item-b
+#
+# The trailing ":" is what makes a heading a heading — indentation alone
+# never does — so items and headings cannot be confused. A heading starting
+# with "/" or "~" roots its own path: headings above it are ignored, so
+# absolute and home-relative trees can sit anywhere.
+#
+# With --mkdir the same outline describes a directory tree — items are the
+# leaf directories, and a heading with nothing under it becomes a directory
+# itself (no warning, unlike print mode):
+#
+#   projects:
+#     clients:                  these three lines create
+#       acme                    projects/clients/acme
+#     archive                   and projects/archive
+#
+# Directories that already exist are skipped silently; ~/… paths land in
+# your home; nothing is created if any file fails to parse.
+#
+# Comments: "#" at the start of a line, or preceded by whitespace, starts
+# one — full-line comments never affect nesting. Blank lines are ignored.
+# Items may contain spaces (the separator in the output is a TAB), but not
+# " #", which always starts a comment.
+#
+# Strictness — any of these stops it with file:line on stderr, exit 2,
+# so a caller can validate a whole file before acting on any of it:
+#   - indentation mixing tabs and spaces (on one line, or across lines)
+#   - a heading with no name (a bare ":")
+# In print mode, a heading with nothing indented under it — likely a typo —
+# gets a file:line warning on stderr, but does not fail the parse.
+# Windows line endings and a UTF-8 BOM are tolerated. Depth is compared by
+# indentation-character count.
+#
+# Targets bash 3.2 (the macOS system bash) and POSIX awk.
+
+set -uo pipefail
+
+LEAF=""
+MKDIR=false
+DRY_RUN=false
+ROOT=""
+FILES=()
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --leaf)      [ $# -ge 2 ] || { echo "outline: --leaf needs a regex" >&2; exit 2; }
+                     LEAF="$2"; shift ;;
+        --mkdir)     MKDIR=true ;;
+        --root)      [ $# -ge 2 ] || { echo "outline: --root needs a directory" >&2; exit 2; }
+                     ROOT="$2"; shift ;;
+        -n|--dry-run) DRY_RUN=true ;;
+        -h|--help)   awk 'NR>1 && /^#/ { sub(/^# ?/, ""); print; next } NR>1 { exit }' "$0"; exit 0 ;;
+        --)          shift; FILES=(${FILES[@]+"${FILES[@]}"} "$@"); break ;;
+        -*)          echo "outline: unknown flag '$1' — try --help" >&2; exit 2 ;;
+        *)           FILES=(${FILES[@]+"${FILES[@]}"} "$1") ;;
+    esac
+    shift
+done
+if [ "$MKDIR" = false ]; then
+    [ "$DRY_RUN" = true ] && { echo "outline: --dry-run only means something with --mkdir" >&2; exit 2; }
+    [ -n "$ROOT" ]        && { echo "outline: --root only means something with --mkdir" >&2; exit 2; }
+fi
+for f in ${FILES[@]+"${FILES[@]}"}; do
+    [ -r "$f" ] || { echo "outline: cannot read $f" >&2; exit 2; }
+done
+
+DIRS=0; [ "$MKDIR" = true ] && DIRS=1
+# parsed completely before anything is acted on: a bad file changes nothing
+OUT="$(awk -v leaf="$LEAF" -v dirs="$DIRS" '
+# without this, the first-ever push subscripts with n as "" (uninitialized),
+# not 0 — and that heading is stored under a key no later read looks at
+BEGIN { n = 0 }
+function where(file, line) {
+    return ((file == "" || file == "-") ? "(stdin)" : file) ":" line
+}
+function fail(msg) {
+    print where(FILENAME, FNR) ": " msg > "/dev/stderr"
+    fatal = 1
+    exit 2
+}
+function path_to(k,  p, i) {   # headings 0..k joined into one path
+    p = ""
+    for (i = 0; i <= k; i++) p = (p == "" ? sdir[i] : p "/" sdir[i])
+    return p
+}
+# In print mode, closing a heading that never got anything indented under
+# it is worth a heads-up: it is how a typo silently drops what should have
+# been items. In --mkdir mode that same heading is simply a leaf directory.
+function close_to(depth) {
+    while (n > 0 && sind[n-1] >= depth) {
+        n--
+        if (!schild[n]) {
+            if (dirs) print path_to(n)
+            else print where(sfile[n], sline[n]) ": warning: heading \"" sdir[n] ":\" has nothing indented under it" > "/dev/stderr"
+        }
+    }
+}
+FNR == 1 { close_to(0); ichar = "" }    # each file starts its own outline
+{
+    sub(/\r$/, "")                      # Windows line endings
+    # UTF-8 BOM, spelled in bytes: \x escapes are not POSIX awk
+    if (FNR == 1 && substr($0, 1, 3) == sprintf("%c%c%c", 239, 187, 191)) $0 = substr($0, 4)
+    ws = $0; sub(/[^ \t].*$/, "", ws)
+    body = substr($0, length(ws) + 1)
+    if (body == "" || body ~ /^#/) next      # blank / comment: no effect at all
+    sub(/[ \t]+#.*$/, "", body)             # trailing comment
+    sub(/[ \t]+$/, "", body)
+    if (body == "") next
+    if (ws ~ / / && ws ~ /\t/) fail("indentation mixes tabs and spaces")
+    if (ws != "") {
+        c = substr(ws, 1, 1)
+        if (ichar == "") ichar = c
+        else if (c != ichar) fail("indentation switches between tabs and spaces")
+    }
+    close_to(length(ws))
+    if (body ~ /:$/ && (leaf == "" || body !~ leaf)) {
+        dir = body; sub(/:$/, "", dir); sub(/\/+$/, "", dir)
+        if (dir == "") fail("a heading needs a name before its \":\"")
+        if (dir ~ /^[\/~]/) n = 0       # absolute or ~ heading roots its own path
+        if (n > 0) schild[n-1] = 1
+        sind[n] = length(ws); sdir[n] = dir
+        sfile[n] = FILENAME; sline[n] = FNR; schild[n] = 0
+        n++
+        next
+    }
+    if (n > 0) schild[n-1] = 1
+    path = path_to(n - 1)
+    if (dirs) print (path == "" ? body : path "/" body)
+    else printf "%s\t%s\n", path, body
+}
+# exit in fail() still lands here — do not pile warnings onto a fatal error
+END { if (fatal) exit 2; close_to(0) }
+' ${FILES[@]+"${FILES[@]}"})" || exit 2
+
+if [ "$MKDIR" = false ]; then
+    [ -n "$OUT" ] && printf '%s\n' "$OUT"
+    exit 0
+fi
+
+STATUS=0
+while IFS= read -r d; do
+    [ -z "$d" ] && continue
+    case "$d" in
+        '~')    d="$HOME" ;;
+        '~'/*)  d="$HOME/${d#'~'/}" ;;
+        /*)     ;;
+        *)      d="${ROOT:-.}/$d" ;;
+    esac
+    [ -d "$d" ] && continue
+    if [ "$DRY_RUN" = true ]; then
+        echo "would create: $d"
+    elif mkdir -p "$d"; then
+        echo "created: $d"
+    else
+        echo "outline: could not create $d" >&2
+        STATUS=1
+    fi
+done <<EOF
+$OUT
+EOF
+exit $STATUS

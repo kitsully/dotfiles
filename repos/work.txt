@@ -1,0 +1,2 @@
+# Repos for work machines — cloned by ./clone-repos.sh when this machine's
+# profile (from setup.sh) is "work". Format: see repos/core.txt.

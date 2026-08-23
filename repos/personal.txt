@@ -1,0 +1,2 @@
+# Repos for personal machines — cloned by ./clone-repos.sh when this
+# machine's profile (from setup.sh) is "personal". Format: see repos/core.txt.

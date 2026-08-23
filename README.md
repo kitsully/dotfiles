@@ -15,7 +15,7 @@ cd ~/dotfiles
 ./setup.sh <profile>     # e.g. ./setup.sh personal — see Profiles below
 ```
 
-Three scripts, no menus — the only questions are first-run ones (profile,
+Four scripts, no menus — the only questions are first-run ones (profile,
 and on Linux headless-or-not), whose answers are recorded and never asked again:
 
 | Script | Does | When |
@@ -23,8 +23,10 @@ and on Linux headless-or-not), whose answers are recorded and never asked again:
 | `./setup.sh` | Installs everything: Xcode CLI tools, Homebrew, macOS preferences (early, so Touch ID covers the sudo prompts that follow), packages, symlinks, VS Code extensions, fzf + iTerm2 integration, then a health check. Asks for your password once and answers the pkg-installer prompts itself; the held copy is overwritten and deleted when the run ends. Add `--upgrade` to also update already-installed packages, `--dock` to also apply the Dock layout (off by default — it replaces the current Dock). | Fresh machine — and re-run any time to pick up new packages and configs. |
 | `./sync.sh` | Folds this machine's drift back into the repo: brew packages, VS Code extensions, the iTerm2 profile. Shows each target's drift and asks before writing (`--yes` skips the asking); then shows `git status` — you review and commit. | Occasionally, at the keyboard. |
 | `./doctor.sh` | Says what is wrong and how to fix it. Changes nothing. | When in doubt. |
+| `./clone-repos.sh` | Clones the repos listed under `repos/` (core + this machine's profile) into `~/Code`. Lines can be ssh, https, or `owner/repo` shorthand; indent repos under `dir:` headings (YAML-style, nested to any depth) to clone them into `~/Code/dir/…` — the trailing `:` is what makes a line a directory rather than a repo. Already-cloned repos are skipped. | Fresh machine, or after adding a repo to a list. |
 
-Everything is safe to re-run. `--dry-run` works on `setup.sh` and `sync.sh`.
+Everything is safe to re-run. `--dry-run` works on `setup.sh`, `sync.sh` and
+`clone-repos.sh`.
 `./install.sh` (just the symlinks) is run by setup but also works alone.
 
 ## Profiles
@@ -84,6 +86,7 @@ Each of these is also answered by a comment in the file you would edit.
 | `sync.sh` | Folds brew/VS Code/iTerm2 drift back into the repo |
 | `doctor.sh` | Health check, report-only |
 | `macos-defaults.sh` | macOS system preferences (dock, keyboard, Finder…) |
+| `clone-repos.sh`, `repos/*.txt` | Clones the listed GitHub repos into `~/Code`: `repos/core.txt` everywhere plus `repos/<profile>.txt` per kind of machine; `dir:` headings group repos into subdirectories (format: `bin/outline --help`) |
 | `dock/<profile>.txt` | Dock layout per profile: one app name per line, in order; `setup.sh --dock` applies it with `dockutil` (opt-in) |
 | `linux/packages.sh` | Distro-native packages: Ubuntu/Debian, Fedora, RHEL, Arch |
 | `linux/packages.<profile>.sh` | Profile-specific CLI tools (doctl, heroku, …) — the Linux analogue of `Brewfile.<profile>`'s CLI section |
