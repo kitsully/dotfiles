@@ -62,11 +62,14 @@ fi
 # ── Dotfiles linked straight into ~ — add or remove a line here ──────────
 link "$DOTFILES/zsh/.zshrc"             "$HOME/.zshrc"
 link "$DOTFILES/git/.gitconfig"         "$HOME/.gitconfig"
+link "$DOTFILES/git/.gitconfig-work"    "$HOME/.gitconfig-work"
 link "$DOTFILES/git/.gitignore_global"  "$HOME/.gitignore_global"
 link "$DOTFILES/claude/settings.json"   "$HOME/.claude/settings.json"
 # public key material only — the private keys live in 1Password, never here
 link "$DOTFILES/ssh/allowed_signers"      "$HOME/.ssh/allowed_signers"
 link "$DOTFILES/ssh/git_signing_key.pub"  "$HOME/.ssh/git_signing_key.pub"
+link "$DOTFILES/ssh/gh-personal.pub"      "$HOME/.ssh/gh-personal.pub"
+link "$DOTFILES/ssh/github-dw.pub"        "$HOME/.ssh/github-dw.pub"
 
 if [ "$OS" = Darwin ]; then
     link "$DOTFILES/git/.gitconfig-macos.local" "$HOME/.gitconfig.local"

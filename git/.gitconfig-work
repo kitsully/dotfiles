@@ -1,0 +1,5 @@
+# Applied on top of .gitconfig for repos under ~/code/work (see the
+# includeIf there). Only the identity changes — everything else inherits.
+[user]
+	name = Kristopher Sullivan
+	email = ksullivan@drivewealth.tech

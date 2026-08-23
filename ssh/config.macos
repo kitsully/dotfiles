@@ -1,2 +1,28 @@
 Host *
 	IdentityAgent "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+
+# Two GitHub accounts, selected by host alias (docs/git-two-accounts.md).
+# The IdentityFile lines are PUBLIC keys — with IdentitiesOnly they tell
+# the 1Password agent which key to offer; the private halves live in
+# 1Password, never on disk or in this repo.
+
+# kitsully — remotes spelled personal:owner/repo.git
+Host personal
+	HostName github.com
+	User git
+	IdentityFile ~/.ssh/gh-personal.pub
+	IdentitiesOnly yes
+
+# ksullivanDW — remotes spelled work:owner/repo.git
+Host work
+	HostName github.com
+	User git
+	IdentityFile ~/.ssh/github-dw.pub
+	IdentitiesOnly yes
+
+# plain git@github.com: remotes default to the work account — that's what
+# every DriveWealth repo uses
+Host github.com
+	User git
+	IdentityFile ~/.ssh/github-dw.pub
+	IdentitiesOnly yes

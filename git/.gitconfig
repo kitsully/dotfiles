@@ -3,6 +3,11 @@
 	email = kris@kristophersullivan.com
 	signingkey = ~/.ssh/git_signing_key.pub
 
+# repos under ~/code/work commit as the work identity instead
+# (/i: case-insensitive, so ~/Code/work matches too)
+[includeIf "gitdir/i:~/code/work/"]
+	path = ~/.gitconfig-work
+
 [gpg]
 	format = ssh
 
