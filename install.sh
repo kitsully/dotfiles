@@ -69,6 +69,7 @@ link "$DOTFILES/claude/settings.json"   "$HOME/.claude/settings.json"
 link "$DOTFILES/ssh/allowed_signers"      "$HOME/.ssh/allowed_signers"
 link "$DOTFILES/ssh/git_signing_key.pub"  "$HOME/.ssh/git_signing_key.pub"
 link "$DOTFILES/ssh/github-work.pub"      "$HOME/.ssh/github-work.pub"
+link "$DOTFILES/ssh/internal-server.pub"  "$HOME/.ssh/internal-server.pub"
 
 if [ "$OS" = Darwin ]; then
     link "$DOTFILES/git/.gitconfig-macos.local" "$HOME/.gitconfig.local"
