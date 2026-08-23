@@ -1,0 +1,81 @@
+# Directories copied wholesale (rsync -a) by prep-flash-drive.sh /
+# extract-flash-drive.sh, relative to ~ (the home directory). One path
+# per line; "#" comments and blank lines ignored.
+#
+# Every project under ~/code, plus Desktop and Documents. Git repos are
+# copied with .git intact, which preserves remotes, branches, stashes,
+# and uncommitted work exactly as they are on migration day. The one
+# exception is dotfiles itself: it arrives on the new machine first via
+# its own install (and these scripts live in it).
+#
+# node_modules, venv/.venv, __pycache__, .next, .cache, graphify-out,
+# and .DS_Store are excluded by the scripts regardless of what's listed
+# here — regenerable caches, reinstall with npm/pip on the new machine.
+
+Desktop
+Documents
+
+code/dwi-tick-db
+
+# code/personal (dotfiles deliberately absent — see header)
+code/personal/ai-pmo
+code/personal/dw-api-client
+code/personal/market-selection-scanner
+code/personal/program-manage-tools-jira
+code/personal/program-manager-reporting
+code/personal/program-manager-tools-2.0
+code/personal/program-manager-tools-2.0-data-grid
+
+# code/work
+code/work/ai-dlc
+code/work/air-notebooks
+code/work/Airflow
+code/work/bo-api-fixed-income
+code/work/CRDB_SSMS
+code/work/databricks
+code/work/demo
+code/work/DockerTest
+code/work/drivewealth_hydra
+code/work/drivewealth-apis
+code/work/drivewealth-dwi-scripts
+code/work/dw-api-oms-test
+code/work/dw-openapi
+code/work/dwi_CAT
+code/work/dwi_cat_scripts
+code/work/DWI_Data
+code/work/dwi_MonthlyInvoicing
+code/work/dwi_PrincipalFacilitationReporting
+code/work/dwi_rstor_tick_data
+code/work/dwi_tick_data_manager
+code/work/dwi-bestex
+code/work/dwi-simulator
+code/work/dwi-tick-database-old
+code/work/dwi-tick-db
+code/work/dwi-tools
+code/work/dwinstitutional_DailyFileImports
+code/work/dwinstitutional_DailyReporting
+code/work/dwinstitutional_pom
+code/work/dwireporting
+code/work/Execution Services Apps
+code/work/GMV
+code/work/hackathon
+code/work/hydra-platform-skeleton
+code/work/hydraTut
+code/work/institutional_reporting
+code/work/jira-cli
+code/work/jupyter_notebooks
+code/work/money-movement
+code/work/NetTrading
+code/work/nextjs-docker
+code/work/PrincipalTradingInventory
+code/work/prod-airflow-container
+code/work/python_scripts
+code/work/qa_automation
+code/work/QueryAnalysis
+code/work/ROMS Requirements
+code/work/routing-rules
+code/work/Scripts
+code/work/sqljdbc_12.2
+code/work/sqljdbc_4.1
+code/work/test-data
+code/work/ultra-oms-institutional

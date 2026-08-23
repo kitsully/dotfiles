@@ -1,0 +1,10 @@
+# Individual files copied by prep-flash-drive.sh / extract-flash-drive.sh,
+# relative to ~ (the home directory). One path per line; "#" comments and
+# blank lines ignored. A missing source file is skipped with a warning.
+#
+# Standalone archives sitting next to (not inside) a project directory:
+code/personal/ai-pmo.zip
+code/work/dwi_cat_scripts.zip
+code/work/DWI_Data.zip
+code/work/dwi-simulator.zip
+code/work/dwi-tick-db.zip
