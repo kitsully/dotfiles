@@ -85,8 +85,10 @@ for f in ${FILES[@]+"${FILES[@]}"}; do
 done
 
 DIRS=0; [ "$MKDIR" = true ] && DIRS=1
-# parsed completely before anything is acted on: a bad file changes nothing
-OUT="$(awk -v leaf="$LEAF" -v dirs="$DIRS" '
+# parsed completely before anything is acted on: a bad file changes nothing.
+# LC_ALL=C keeps awk byte-oriented: in a UTF-8 locale gawk counts characters,
+# and the three-byte BOM comparison below would never match.
+OUT="$(LC_ALL=C awk -v leaf="$LEAF" -v dirs="$DIRS" '
 # without this, the first-ever push subscripts with n as "" (uninitialized),
 # not 0 — and that heading is stored under a key no later read looks at
 BEGIN { n = 0 }
