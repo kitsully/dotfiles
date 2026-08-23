@@ -142,11 +142,8 @@ keeps the personal one. Verify with `git config user.email` inside a work repo.
 The manual follow-ups `setup.sh` cannot do:
 
 **Every machine**
-1. Sign into 1Password, then re-run `./setup.sh` — it flips the SSH-agent
-   toggle for you (macOS: by editing 1Password's unofficial settings.json with
-   the app closed, keeping a `.bak`; the step verifies the agent socket
-   appears). If that ever breaks after a 1Password update, enable
-   Settings → Developer → "Use the SSH agent" by hand.
+1. Sign into 1Password and enable Settings → Developer → "Use the SSH
+   agent". (`./doctor.sh` checks the agent socket is up.)
 2. Store or import your SSH key in 1Password; add the public key to GitHub as
    both an **authentication** and a **signing** key.
 3. Check the tracked public key still matches the agent's (`ssh-add -L` vs

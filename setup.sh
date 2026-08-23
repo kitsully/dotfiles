@@ -421,70 +421,6 @@ do_raycast_hotkey() {
     ok "Spotlight hotkey — off (a logout makes it stick if not immediate)"
 }
 
-# 1Password's SSH agent serves the keys ssh/config.macos points at. Its
-# toggle lives in an UNOFFICIAL file (settings.json inside the app's group
-# container) — a private format an update may move or ignore, and the
-# running app rewrites it on quit, clobbering outside edits. So: check
-# before touching anything, edit only with the app closed (quit, merge the
-# key with jq, relaunch), keep a .bak, and trust only the agent socket
-# actually appearing as proof the edit took. doctor.sh checks the socket.
-OP_GROUP="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password"
-OP_SOCK="$OP_GROUP/t/agent.sock"
-OP_SETTINGS="$OP_GROUP/Library/Application Support/1Password/Data/settings/settings.json"
-
-do_1password_agent() {
-    [ -d "/Applications/1Password.app" ] || { info "1Password is not installed — skipping"; return 0; }
-    [ -S "$OP_SOCK" ] && { ok "agent already on (socket present)"; return 0; }
-    command -v jq >/dev/null 2>&1 || { warn "jq missing (the packages step installs it) — re-run ./setup.sh"; return 0; }
-    if [ ! -f "$OP_SETTINGS" ]; then
-        warn "1Password has no settings file yet — open it, sign in, then re-run ./setup.sh"
-        return 0
-    fi
-    if jq -e '."sshAgent.enabled" == true' "$OP_SETTINGS" >/dev/null 2>&1; then
-        if [ "$DRY_RUN" = true ]; then info "toggle already on — would launch 1Password and wait for the agent socket"; return 0; fi
-        info "toggle already on but no agent socket — launching 1Password (unlock it if it asks)"
-        open -ga 1Password
-    else
-        if [ "$DRY_RUN" = true ]; then info "would quit 1Password, set sshAgent.enabled=true, relaunch"; return 0; fi
-        local was_running=false
-        if pgrep -xq 1Password; then
-            was_running=true
-            info "quitting 1Password to flip its SSH-agent toggle (editing while it runs gets overwritten) — it relaunches right after"
-            osascript -e 'tell application "1Password" to quit' >/dev/null 2>&1
-            local waited=0
-            while pgrep -xq 1Password; do
-                if [ "$waited" -ge 15 ]; then
-                    warn "1Password did not quit — flip it yourself: 1Password > Settings > Developer > 'Use the SSH agent'"
-                    return 0
-                fi
-                sleep 1; waited=$((waited+1))
-            done
-        fi
-        local tmp="$OP_SETTINGS.new"
-        if ! jq '. + {"sshAgent.enabled": true}' "$OP_SETTINGS" > "$tmp" 2>/dev/null || ! jq -e . "$tmp" >/dev/null 2>&1; then
-            rm -f "$tmp"
-            warn "could not edit the settings file (1Password changed its format?) — flip it in 1Password > Settings > Developer"
-            [ "$was_running" = true ] && open -ga 1Password
-            return 0
-        fi
-        cp "$OP_SETTINGS" "$OP_SETTINGS.bak"   # unofficial format — keep an undo
-        mv "$tmp" "$OP_SETTINGS"
-        ok "sshAgent.enabled set (previous settings kept as settings.json.bak)"
-        info "$([ "$was_running" = true ] && echo re)launching 1Password — unlock it if it asks"
-        open -ga 1Password
-    fi
-    # the socket appearing is the only real proof this unofficial edit took
-    local waited=0
-    until [ -S "$OP_SOCK" ]; do
-        if [ "$waited" -ge 30 ]; then
-            warn "no agent socket after 30s — unlock 1Password and check with ./doctor.sh; if it never appears, flip it in 1Password > Settings > Developer"
-            return 0
-        fi
-        sleep 1; waited=$((waited+1))
-    done
-    ok "agent socket is up — 1Password is serving your SSH keys"
-}
-
 do_macos_defaults() { run bash "$SCRIPT_DIR/macos-defaults.sh"; }
 
 # Dock layout is declarative: dock/<profile>.txt lists the apps in order,
@@ -626,7 +562,6 @@ if [ "$PLATFORM" = mac ]; then
     step "fzf shell integration"           do_fzf
     step "iTerm2 shell integration"        do_iterm2
     step "Raycast hotkey (⌘Space)"         do_raycast_hotkey
-    step "1Password SSH agent"             do_1password_agent
     step "Dock layout"                     do_dock
     step "Health check"                    do_doctor
 else
