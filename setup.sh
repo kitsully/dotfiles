@@ -247,12 +247,19 @@ do_brew() {
         # at a Press-RETURN gate. Non-interactive mode skips both, and
         # every sudo it runs answers itself through the askpass helper (-A).
         # The sed reshapes its output to this script's style: the mode
-        # announcement goes, ==> prefixes go, everything indents. And the
-        # big clone prints nothing at all into a pipe (git drops progress
+        # announcement, analytics/donation blurbs, "Next steps" (this
+        # script handles PATH itself), progress-bar leftovers and blank
+        # lines go; ==> prefixes go; the rest indents, dimmed. And the big
+        # clone prints nothing at all into a pipe (git drops progress
         # off-terminal), so say first that minutes of quiet are healthy.
         info "installer passwords are answered automatically — and the download is silent, so minutes of quiet here are normal, not a hang"
         NONINTERACTIVE=1 /bin/bash -c "$installer" 2>&1 \
-            | sed "/Running in non-interactive mode/d; s/^==> //; s/^/  $DIM/; s/\$/$RESET/" || return 1
+            | sed "/Running in non-interactive mode/d; s/^==> //; \
+                   /^Homebrew has enabled anonymous/,/install run/d; \
+                   /run entirely by unpaid volunteers/,/#donations/d; \
+                   /^Next steps:/,\$d; \
+                   /^[ \#O=-]*[0-9][0-9.]*%[ ]*\$/d; /^[ ]*\$/d; \
+                   s/^/  $DIM/; s/\$/$RESET/" || return 1
     else
         # no stored password (the helper went missing mid-run): let the
         # installer stay interactive and prompt for what it needs
