@@ -104,3 +104,6 @@ alias hist="history | fzf"
 alias vim="nvim"
 # cd to the frontmost Finder window (a script can't cd its parent shell)
 [[ "$(uname)" == "Darwin" ]] && alias cdf='cd "$(finder)"'
+
+# Pull every git repo sitting under the current directory
+pullall() { for d in */; do [ -d "$d/.git" ] && (echo "== $d ==" && cd "$d" && git pull); done; }
