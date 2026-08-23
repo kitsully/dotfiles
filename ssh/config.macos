@@ -29,7 +29,7 @@ Host github.com
 	IdentityFile ~/.ssh/github-work.pub
 	IdentitiesOnly yes
 
-# internal work server (key in 1Password: "Internal server RSA")
+# internal work server (key in 1Password: "Quant Server")
 Host 10.5.12.151
 	IdentityFile ~/.ssh/internal-server.pub
 	IdentitiesOnly yes
