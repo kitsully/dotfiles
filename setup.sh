@@ -252,7 +252,7 @@ do_brew() {
         # off-terminal), so say first that minutes of quiet are healthy.
         info "installer passwords are answered automatically — and the download is silent, so minutes of quiet here are normal, not a hang"
         NONINTERACTIVE=1 /bin/bash -c "$installer" 2>&1 \
-            | sed '/Running in non-interactive mode/d; s/^==> //; s/^/  /' || return 1
+            | sed "/Running in non-interactive mode/d; s/^==> //; s/^/  $DIM/; s/\$/$RESET/" || return 1
     else
         # no stored password (the helper went missing mid-run): let the
         # installer stay interactive and prompt for what it needs
