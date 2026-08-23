@@ -21,6 +21,7 @@ cask_args adopt: true
 
 # === Commonly needed at work ===
 cask "cloudflare-warp"
+cask "google-drive"
 cask "microsoft-teams"
 cask "slack"
 cask "webex"
@@ -28,4 +29,3 @@ cask "webex"
 # Most orgs push these through MDM (Jamf/Intune/Kandji) rather than Homebrew.
 # Install via brew only if IT does not deploy them for you:
 # cask "microsoft-outlook"
-# cask "google-drive"
