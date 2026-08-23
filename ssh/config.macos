@@ -1,7 +1,8 @@
 Host *
 	IdentityAgent "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
 
-# Two GitHub accounts, selected by host alias (docs/git-two-accounts.md).
+# Two GitHub accounts, selected by host alias (the full runbook lives
+# off-repo — see the cheat sheet in ~/Desktop / Documents).
 # The IdentityFile lines are PUBLIC keys — with IdentitiesOnly they tell
 # the 1Password agent which key to offer; the private halves live in
 # 1Password, never on disk or in this repo.
