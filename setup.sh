@@ -235,7 +235,24 @@ do_brew() {
     fi
     command -v brew >/dev/null 2>&1 && { ok "already installed"; return 0; }
     if [ "$DRY_RUN" = true ]; then info "would install Homebrew"; return 0; fi
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || return 1
+    # fetched into a variable so a failed download is an error here, not an
+    # empty script that bash -c "runs" successfully
+    local installer
+    installer="$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" && [ -n "$installer" ] \
+        || { warn "could not download Homebrew's installer (offline?)"; return 1; }
+    if [ -n "${SUDO_ASKPASS:-}" ] && [ -x "$SUDO_ASKPASS" ]; then
+        # The password was asked for and verified up top — the installer
+        # must not ask again. Interactively it would: its sudo-access check
+        # runs its own `sudo -v` (a second password prompt) and it pauses
+        # at a Press-RETURN gate. Non-interactive mode skips both, and
+        # every sudo it runs answers itself through the askpass helper
+        # (-A). Piping through sed indents its ==> output to match ours.
+        NONINTERACTIVE=1 /bin/bash -c "$installer" 2>&1 | sed 's/^/  /' || return 1
+    else
+        # no stored password (the helper went missing mid-run): let the
+        # installer stay interactive and prompt for what it needs
+        /bin/bash -c "$installer" || return 1
+    fi
     eval "$(/opt/homebrew/bin/brew shellenv)"
 }
 
