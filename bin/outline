@@ -5,6 +5,10 @@
 #                               its heading path, a TAB, and the item
 #   outline --leaf <regex>      lines matching regex are always items, even
 #                               with a trailing ":"
+#   outline --items <regex>     self-marking items: lines matching regex are
+#                               the items and EVERY other line is a heading —
+#                               no ":" needed (a trailing ":" or "/" on a
+#                               heading is tolerated and stripped)
 #   outline --mkdir             create directories instead of printing:
 #                               every line, heading or item, is a directory
 #   outline --root <dir>        with --mkdir: create relative paths under
@@ -57,6 +61,7 @@
 set -uo pipefail
 
 LEAF=""
+ITEMS=""
 MKDIR=false
 DRY_RUN=false
 ROOT=""
@@ -65,6 +70,8 @@ while [ $# -gt 0 ]; do
     case "$1" in
         --leaf)      [ $# -ge 2 ] || { echo "outline: --leaf needs a regex" >&2; exit 2; }
                      LEAF="$2"; shift ;;
+        --items)     [ $# -ge 2 ] || { echo "outline: --items needs a regex" >&2; exit 2; }
+                     ITEMS="$2"; shift ;;
         --mkdir)     MKDIR=true ;;
         --root)      [ $# -ge 2 ] || { echo "outline: --root needs a directory" >&2; exit 2; }
                      ROOT="$2"; shift ;;
@@ -80,6 +87,9 @@ if [ "$MKDIR" = false ]; then
     [ "$DRY_RUN" = true ] && { echo "outline: --dry-run only means something with --mkdir" >&2; exit 2; }
     [ -n "$ROOT" ]        && { echo "outline: --root only means something with --mkdir" >&2; exit 2; }
 fi
+if [ -n "$LEAF" ] && [ -n "$ITEMS" ]; then
+    echo "outline: --leaf and --items conflict — --items already decides every line" >&2; exit 2
+fi
 for f in ${FILES[@]+"${FILES[@]}"}; do
     [ -r "$f" ] || { echo "outline: cannot read $f" >&2; exit 2; }
 done
@@ -88,7 +98,7 @@ DIRS=0; [ "$MKDIR" = true ] && DIRS=1
 # parsed completely before anything is acted on: a bad file changes nothing.
 # LC_ALL=C keeps awk byte-oriented: in a UTF-8 locale gawk counts characters,
 # and the three-byte BOM comparison below would never match.
-OUT="$(LC_ALL=C awk -v leaf="$LEAF" -v dirs="$DIRS" '
+OUT="$(LC_ALL=C awk -v leaf="$LEAF" -v items="$ITEMS" -v dirs="$DIRS" '
 # without this, the first-ever push subscripts with n as "" (uninitialized),
 # not 0 — and that heading is stored under a key no later read looks at
 BEGIN { n = 0 }
@@ -113,7 +123,7 @@ function close_to(depth) {
         n--
         if (!schild[n]) {
             if (dirs) print path_to(n)
-            else print where(sfile[n], sline[n]) ": warning: heading \"" sdir[n] ":\" has nothing indented under it" > "/dev/stderr"
+            else print where(sfile[n], sline[n]) ": warning: heading \"" sdir[n] "\" has nothing indented under it" > "/dev/stderr"
         }
     }
 }
@@ -135,7 +145,9 @@ FNR == 1 { close_to(0); ichar = "" }    # each file starts its own outline
         else if (c != ichar) fail("indentation switches between tabs and spaces")
     }
     close_to(length(ws))
-    if (body ~ /:$/ && (leaf == "" || body !~ leaf)) {
+    # --items flips the default: matching lines are the items, all else is
+    # a heading. Without it, the trailing ":" marks a heading.
+    if (items != "" ? body !~ items : (body ~ /:$/ && (leaf == "" || body !~ leaf))) {
         dir = body; sub(/:$/, "", dir); sub(/\/+$/, "", dir)
         if (dir == "") fail("a heading needs a name before its \":\"")
         if (dir ~ /^[\/~]/) n = 0       # absolute or ~ heading roots its own path

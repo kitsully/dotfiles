@@ -8,30 +8,27 @@
 #   ./clone-repos.sh <file>...    clone from these list files instead
 #   ./clone-repos.sh --dry-run    show what would be cloned, change nothing
 #
-# List format — one repo per line, in any of the three GitHub notations:
-#   git@github.com:owner/repo.git     (ssh)
-#   https://github.com/owner/repo     (https)
-#   owner/repo                        (gh CLI shorthand)
-# Repos are grouped into directories YAML-style: a "name:" heading opens a
-# directory, the repos indented under it clone there, and headings nest to
-# any depth. The ":" is what makes a heading — repos never end with one —
-# so the two cannot be confused. A top-level heading is a subdirectory of
-# ~/Code; a ~/… or absolute heading roots its own tree. Unindented repos go
-# straight to ~/Code:
-#   cli/cli                   -> ~/Code/cli
-#   work:
-#     acme/api                -> ~/Code/work/api
-#     clients:
-#       acme/webapp           -> ~/Code/work/clients/webapp
-#   ~/somewhere:
-#     owner/other             -> ~/somewhere/other
+# List format — a repo is a full clone URL, ssh or https:
+#   git@github.com:owner/repo.git
+#   https://github.com/owner/repo
+# Any line that is NOT a URL names a directory — no marker needed, the two
+# cannot be confused — and the repos indented under it clone there, nesting
+# to any depth. A top-level directory is a subdirectory of ~/Code; a ~/… or
+# absolute one roots its own tree. Unindented repos go straight to ~/Code:
+#   git@github.com:cli/cli.git             -> ~/Code/cli
+#   work
+#     git@github.com:acme/api.git          -> ~/Code/work/api
+#     clients
+#       https://github.com/acme/webapp     -> ~/Code/work/clients/webapp
+#   ~/somewhere
+#     git@github.com:owner/other.git       -> ~/somewhere/other
 # Blank lines and comments (a whole line, or trailing after whitespace) are
 # ignored. Indent with spaces or tabs — mixing them is an error, caught
 # before anything is cloned. The format is bin/outline's; see its --help.
 #
-# The notation only identifies the repo: cloning always goes over ssh (so
-# your keys and 1Password's agent apply), falling back to https only when
-# ssh fails — a machine with no key set up yet can still fetch public repos.
+# The URL only identifies the repo: cloning always goes over ssh (so your
+# keys and 1Password's agent apply), falling back to https only when ssh
+# fails — a machine with no key set up yet can still fetch public repos.
 #
 # Targets bash 3.2 (the macOS system bash).
 
@@ -145,7 +142,7 @@ printf "%s└─%s\n" "$BOLD" "$RESET"
 # bin/outline does the parsing (nesting, comments, strictness checks) and
 # prints group<TAB>repo pairs. Parsing the whole list happens HERE, before
 # any clone: a malformed file stops the run with nothing half-done.
-if ! PARSED="$("$SCRIPT_DIR/bin/outline" "${FILES[@]}")"; then
+if ! PARSED="$("$SCRIPT_DIR/bin/outline" --items '^(git@|ssh://|https?://)' "${FILES[@]}")"; then
     printf "%s✗ could not parse the list (see above) — nothing was cloned%s\n" "$RED" "$RESET"
     exit 1
 fi
