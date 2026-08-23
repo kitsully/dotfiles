@@ -245,9 +245,14 @@ do_brew() {
         # must not ask again. Interactively it would: its sudo-access check
         # runs its own `sudo -v` (a second password prompt) and it pauses
         # at a Press-RETURN gate. Non-interactive mode skips both, and
-        # every sudo it runs answers itself through the askpass helper
-        # (-A). Piping through sed indents its ==> output to match ours.
-        NONINTERACTIVE=1 /bin/bash -c "$installer" 2>&1 | sed 's/^/  /' || return 1
+        # every sudo it runs answers itself through the askpass helper (-A).
+        # The sed reshapes its output to this script's style: the mode
+        # announcement goes, ==> prefixes go, everything indents. And the
+        # big clone prints nothing at all into a pipe (git drops progress
+        # off-terminal), so say first that minutes of quiet are healthy.
+        info "installer passwords are answered automatically — and the download is silent, so minutes of quiet here are normal, not a hang"
+        NONINTERACTIVE=1 /bin/bash -c "$installer" 2>&1 \
+            | sed '/Running in non-interactive mode/d; s/^==> //; s/^/  /' || return 1
     else
         # no stored password (the helper went missing mid-run): let the
         # installer stay interactive and prompt for what it needs
