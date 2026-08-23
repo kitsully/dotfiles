@@ -6,23 +6,24 @@ Host *
 # the 1Password agent which key to offer; the private halves live in
 # 1Password, never on disk or in this repo.
 
-# kitsully — remotes spelled personal:owner/repo.git
+# kitsully — remotes spelled personal:owner/repo.git. Auth uses the same
+# key that signs commits ("Personal RSA" in 1Password).
 Host personal
 	HostName github.com
 	User git
-	IdentityFile ~/.ssh/gh-personal.pub
+	IdentityFile ~/.ssh/git_signing_key.pub
 	IdentitiesOnly yes
 
 # ksullivanDW — remotes spelled work:owner/repo.git
 Host work
 	HostName github.com
 	User git
-	IdentityFile ~/.ssh/github-dw.pub
+	IdentityFile ~/.ssh/github-work.pub
 	IdentitiesOnly yes
 
 # plain git@github.com: remotes default to the work account — that's what
 # every DriveWealth repo uses
 Host github.com
 	User git
-	IdentityFile ~/.ssh/github-dw.pub
+	IdentityFile ~/.ssh/github-work.pub
 	IdentitiesOnly yes
